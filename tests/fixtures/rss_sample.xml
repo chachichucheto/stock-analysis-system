@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>NHK NEWS WEB</title>
+    <link>https://www3.nhk.or.jp/news/</link>
+    <description>NHKニュース</description>
+    <item>
+      <title>大手半導体メーカーが国内工場に新規投資を発表</title>
+      <link>https://www3.nhk.or.jp/news/html/20260925/k10012345671000.html</link>
+      <description>大手半導体メーカーは25日、国内工場への大型investment計画を発表した。</description>
+      <pubDate>Fri, 25 Sep 2026 09:00:00 +0900</pubDate>
+    </item>
+    <item>
+      <title>台風が接近 west日本で大雨のおそれ</title>
+      <link>https://www3.nhk.or.jp/news/html/20260925/k10012345672000.html</link>
+      <description>気象庁は西日本を中心に大雨への警戒を呼びかけている。</description>
+      <pubDate>Fri, 25 Sep 2026 10:30:00 +0900</pubDate>
+    </item>
+    <item>
+      <title>見出しだけの記事(要約なし)</title>
+      <link>https://www3.nhk.or.jp/news/html/20260925/k10012345673000.html</link>
+      <pubDate>Fri, 25 Sep 2026 11:00:00 +0900</pubDate>
+    </item>
+  </channel>
+</rss>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>"半導体" - Google ニュース</title>
+    <link>https://news.google.com/rss/search?q=%E5%8D%8A%E5%B0%8E%E4%BD%93&amp;hl=ja&amp;gl=JP&amp;ceid=JP:ja</link>
+    <item>
+      <title>半導体大手が増産へ - 日本経済新聞</title>
+      <link>https://news.google.com/rss/articles/CAAA1</link>
+      <pubDate>Fri, 25 Sep 2026 08:00:00 GMT</pubDate>
+      <source url="https://www.nikkei.com">日本経済新聞</source>
+    </item>
+    <item>
+      <title>半導体関連株が上昇 - 株式新聞</title>
+      <link>https://news.google.com/rss/articles/CAAA2</link>
+      <pubDate>Fri, 25 Sep 2026 09:15:00 GMT</pubDate>
+      <source url="https://www.kabushiki.co.jp">株式新聞</source>
+    </item>
+    <item>
+      <title>半導体投資が加速、専門家がコメント - ロイター</title>
+      <link>https://news.google.com/rss/articles/CAAA3</link>
+      <pubDate>Fri, 25 Sep 2026 10:45:00 GMT</pubDate>
+      <source url="https://jp.reuters.com">ロイター</source>
+    </item>
+  </channel>
+</rss>
