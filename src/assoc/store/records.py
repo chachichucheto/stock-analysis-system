@@ -16,9 +16,10 @@ GENESIS = "0" * 64
 
 # 作り直せない記録の種類(DESIGN §5)。ここにない種類は受け付けない。
 KINDS = frozenset({
-    "grade", "grade_final", "premise_card", "scenario", "scenario_update", "check_plan",
+    "grade", "premise_card", "scenario", "scenario_update", "check_plan",
     "evidence", "candidate", "ranking_snapshot", "pick_tracking", "user_decision",
     "run_log", "event_gate", "commit_rejection", "theme_temperature", "monthly_review",
+    "scenario_status", "grade_final", "past_case",
 })
 
 

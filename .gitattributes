@@ -1,0 +1,2 @@
+# PowerShell は BOM 付き UTF-8・CRLF のまま保存する(Windows PowerShell 5.1 の文字化け防止)
+*.ps1 -text

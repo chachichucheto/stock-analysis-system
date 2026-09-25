@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "monthly_output.schema.json",
+  "title": "月次の振り返り(/association-monthly)の出力",
+  "description": "docs/DESIGN.md §6.9。見逃しの候補のうちイベントと関係するものの判定(事後の判定)、見逃しと外れの原因、改善の提案",
+  "type": "object",
+  "required": ["month", "model_id", "prompt_version", "related_movers", "miss_analysis", "failure_analysis", "improvements", "new_past_cases"],
+  "additionalProperties": false,
+  "properties": {
+    "month": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$"},
+    "model_id": {"type": "string"},
+    "prompt_version": {"type": "string"},
+    "related_movers": {
+      "type": "array",
+      "description": "見逃しの候補のうち、イベントと関係があると判定したもの",
+      "items": {
+        "type": "object",
+        "required": ["event_id", "code", "company_name", "related", "reason"],
+        "additionalProperties": false,
+        "properties": {
+          "event_id": {"type": "string"}, "code": {"type": "string"}, "company_name": {"type": "string"},
+          "related": {"type": "boolean"}, "reason": {"type": "string"}
+        }
+      }
+    },
+    "miss_analysis": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["event_id", "code", "cause", "detail"],
+        "additionalProperties": false,
+        "properties": {
+          "event_id": {"type": "string"}, "code": {"type": "string"},
+          "cause": {"enum": ["足切りで落ちた", "等級を低く付けた", "連想の幅が足りない", "候補の上限で落ちた", "照合で落ちた", "その他"]},
+          "detail": {"type": "string"}
+        }
+      }
+    },
+    "failure_analysis": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["scenario_id", "code", "wrong_arrow", "detail"],
+        "additionalProperties": false,
+        "properties": {
+          "scenario_id": {"type": "string"}, "code": {"type": "string"},
+          "wrong_arrow": {"type": ["integer", "null"], "description": "間違っていた矢印の番号(特定できなければ null)"},
+          "detail": {"type": "string"}
+        }
+      }
+    },
+    "improvements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["target", "proposal", "reason"],
+        "additionalProperties": false,
+        "properties": {
+          "target": {"enum": ["指示文", "前提カード", "等級の基準", "過去事例", "足切り", "その他"]},
+          "proposal": {"type": "string"}, "reason": {"type": "string"}
+        }
+      }
+    },
+    "new_past_cases": {
+      "type": "array",
+      "description": "過去事例ライブラリに追加する、今月の大きなイベント",
+      "items": {"type": "object"}
+    }
+  }
+}

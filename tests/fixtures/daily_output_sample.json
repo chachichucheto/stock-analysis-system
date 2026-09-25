@@ -1,0 +1,38 @@
+{
+  "run": {"date": "2026-10-01", "mode": "通常", "model_id": "example-model", "prompt_version": "daily-v1", "input_pack_hash": "abcdef0123456789"},
+  "premise_cards": [
+    {"theme_id": "P01", "version": 1, "market_premise": "大手のデータセンター投資は年+30%程度の成長が続く", "key_numbers": ["大手クラウドの設備投資額"], "breaking_directions": ["投資の急減速", "規制"], "based_on_event_id": "EV20261001-01"}
+  ],
+  "grades": [
+    {"event_id": "EV20261001-01", "provisional_grade": "S", "new_fact": "過去の報道に同じ内容はない", "distance_from_premise": {"summary": "前提の年+30%に対し、発注が100倍", "numbers": [{"label": "発注の伸び", "premise": "+30%", "new": "100倍"}]}, "source_certainty": "当事者の公式発表", "theme_ids": ["P01"], "premise_card_version": 1, "check_basis": "1段目", "check_codes": ["TSM"], "new_theme_flag": false},
+    {"event_id": "EV20261001-02", "provisional_grade": "B", "new_fact": "予想どおりの決算", "distance_from_premise": {"summary": "前提の範囲内", "numbers": []}, "source_certainty": "決算短信", "theme_ids": ["M01"], "premise_card_version": null, "check_basis": "なし", "check_codes": [], "new_theme_flag": false}
+  ],
+  "scenario_updates": [],
+  "scenarios": [
+    {
+      "scenario_ref": "new1", "event_id": "EV20261001-01",
+      "statement": "TSMCの発注が100倍 → 製造装置の部材が不足 → 部材メーカーが買われる",
+      "theme_ids": ["P01"], "new_theme_flag": false, "time_type": "単発", "phase": null, "start_condition": null, "scheduled_date": null,
+      "started": true, "end_condition": "発注計画の撤回", "expected_days": 10, "strength": "Medium",
+      "expected_rise": {"low": 0.2, "median": 0.4, "high": 0.6, "basis": "S級。影響額が時価総額の8%。小型"},
+      "past_case_ids": [],
+      "check_plan": [
+        {"arrow_no": 1, "arrow": "発注が本当に増えるか", "indicator": "会社の公式発表", "source": "会社のIR", "criterion": "数量の明記", "next_release": null},
+        {"arrow_no": 2, "arrow": "部材が不足するか", "indicator": "業界の受注統計", "source": "業界団体", "criterion": "受注残の増加", "next_release": "2026-10-20"}
+      ],
+      "candidates": [
+        {"code": "8035", "company_name": "東京エレクトロン", "stage": 1, "viewpoint": "両方", "side": "long", "rationale": "製造装置の大手", "break_conditions": ["発注計画の撤回"], "next_catalyst": "月次の受注", "realization_prob": 0.6, "direction_clear": true},
+        {"code": "9999", "company_name": "架空の部材", "stage": 2, "viewpoint": "経済", "side": "long", "rationale": "部材を供給", "break_conditions": ["大手の内製化"], "next_catalyst": "月次売上", "realization_prob": 0.5, "direction_clear": true}
+      ],
+      "rejected_candidates": [{"code": "6857", "company_name": "アドバンテスト", "reason": "検査装置は発注の増加と関係が薄い"}]
+    }
+  ],
+  "evidence": [
+    {"scenario": "new1", "arrow_no": 1, "url": "https://example.com/ir", "retrieved_at": "2026-10-01T12:00:00Z", "value": "発注数量を明記", "source_tier": 1, "supports": "for", "published_at": null},
+    {"scenario": "new1", "arrow_no": 2, "url": "https://example.com/blog", "retrieved_at": "2026-10-01T12:05:00Z", "value": "不足との書き込み", "source_tier": 4, "supports": "for", "published_at": null}
+  ],
+  "check_status": [
+    {"scenario": "new1", "arrow_no": 1, "status": "確認"},
+    {"scenario": "new1", "arrow_no": 2, "status": "確認"}
+  ]
+}
