@@ -1,0 +1,9 @@
+duckdb==1.5.5
+pandas==3.0.6
+PyYAML>=6.0
+jsonschema>=4.20
+requests>=2.31
+feedparser>=6.0
+jpholiday>=0.1.10
+yfinance>=0.2.40
+pytest>=8.0

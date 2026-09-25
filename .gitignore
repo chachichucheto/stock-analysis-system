@@ -1,0 +1,14 @@
+# データ・DB・レポートは git に入れない(docs/DESIGN.md §4)
+data/
+*.duckdb
+*.duckdb.wal
+config/config.yaml
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/

@@ -1,0 +1,657 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "daily_output.schema.json",
+  "title": "夜の手順(/association-daily)の出力",
+  "description": "LLM が data/inbox/ に書き出す JSON。Python の確定処理(src/assoc/commit)がこれを検証してから記録する。docs/DESIGN.md §5・§6.4",
+  "type": "object",
+  "required": [
+    "run",
+    "grades",
+    "scenario_updates",
+    "scenarios",
+    "evidence",
+    "check_status"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "run": {
+      "type": "object",
+      "required": [
+        "date",
+        "mode",
+        "model_id",
+        "prompt_version",
+        "input_pack_hash"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "type": "string",
+          "format": "date",
+          "description": "入力パックの日付(日本時間)"
+        },
+        "mode": {
+          "enum": [
+            "通常",
+            "最小"
+          ]
+        },
+        "model_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prompt_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "input_pack_hash": {
+          "type": "string",
+          "minLength": 8
+        }
+      }
+    },
+    "premise_cards": {
+      "type": "array",
+      "description": "新しく作った、または更新した前提カード",
+      "items": {
+        "type": "object",
+        "required": [
+          "theme_id",
+          "version",
+          "market_premise",
+          "key_numbers",
+          "breaking_directions"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "theme_id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "market_premise": {
+            "type": "string",
+            "minLength": 1
+          },
+          "key_numbers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "breaking_directions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "based_on_event_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "grades": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "event_id",
+          "provisional_grade",
+          "new_fact",
+          "distance_from_premise",
+          "source_certainty",
+          "theme_ids",
+          "check_basis",
+          "check_codes",
+          "new_theme_flag"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "provisional_grade": {
+            "enum": [
+              "S",
+              "A",
+              "B",
+              "C"
+            ]
+          },
+          "new_fact": {
+            "type": "string",
+            "description": "質問1:新しい事実か。過去の報道との比較"
+          },
+          "distance_from_premise": {
+            "type": "object",
+            "required": [
+              "summary",
+              "numbers"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "summary": {
+                "type": "string"
+              },
+              "numbers": {
+                "type": "array",
+                "description": "前提の数字と新しい数字を並べる",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "label",
+                    "premise",
+                    "new"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "label": {
+                      "type": "string"
+                    },
+                    "premise": {
+                      "type": "string"
+                    },
+                    "new": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "source_certainty": {
+            "type": "string",
+            "description": "質問3:誰が、どれだけ確定的に言ったか"
+          },
+          "theme_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "premise_card_version": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "check_basis": {
+            "enum": [
+              "1段目",
+              "銘柄群",
+              "業種指数",
+              "なし"
+            ],
+            "description": "翌日の検算に使うもの"
+          },
+          "check_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "検算に使う銘柄コード(米国株はティッカー)"
+          },
+          "new_theme_flag": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "scenario_updates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "scenario_id",
+          "event_id",
+          "type",
+          "new_fact_summary",
+          "reading_for",
+          "reading_against",
+          "strength_after"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "scenario_id": {
+            "type": "string"
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "強化",
+              "弱体化",
+              "繰り返し",
+              "消滅",
+              "起動"
+            ]
+          },
+          "new_fact_summary": {
+            "type": "string"
+          },
+          "reading_for": {
+            "type": "string",
+            "description": "強化と読む場合の理由"
+          },
+          "reading_against": {
+            "type": "string",
+            "description": "弱体化・見かけだけと読む場合の理由"
+          },
+          "strength_after": {
+            "enum": [
+              "Weak",
+              "Weak+",
+              "Medium",
+              "Strong"
+            ]
+          },
+          "expected_rise": {
+            "$ref": "#/$defs/expected_rise"
+          },
+          "evidence_urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "scenarios": {
+      "type": "array",
+      "description": "新しく立てたシナリオ(S・A級のイベントのみ)",
+      "items": {
+        "type": "object",
+        "required": [
+          "scenario_ref",
+          "event_id",
+          "statement",
+          "theme_ids",
+          "new_theme_flag",
+          "time_type",
+          "started",
+          "end_condition",
+          "expected_days",
+          "strength",
+          "expected_rise",
+          "past_case_ids",
+          "check_plan",
+          "candidates",
+          "rejected_candidates"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "scenario_ref": {
+            "type": "string",
+            "description": "この出力の中だけで使う仮の番号(例: new1)。確定時に正式な番号に置き換わる"
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "statement": {
+            "type": "string",
+            "description": "「Xが起きた → だからYが買われる」"
+          },
+          "theme_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "new_theme_flag": {
+            "type": "boolean"
+          },
+          "time_type": {
+            "enum": [
+              "単発",
+              "局面展開",
+              "予定日"
+            ]
+          },
+          "phase": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "局面展開型の局面の名前"
+          },
+          "start_condition": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "局面展開型の起動条件"
+          },
+          "scheduled_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "予定日型の予定日"
+          },
+          "started": {
+            "type": "boolean",
+            "description": "false なら待機(時計は止まる)"
+          },
+          "end_condition": {
+            "type": "string"
+          },
+          "expected_days": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 60
+          },
+          "strength": {
+            "enum": [
+              "Weak",
+              "Weak+",
+              "Medium",
+              "Strong"
+            ]
+          },
+          "expected_rise": {
+            "$ref": "#/$defs/expected_rise"
+          },
+          "past_case_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "check_plan": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "arrow_no",
+                "arrow",
+                "indicator",
+                "source",
+                "criterion"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "arrow_no": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "arrow": {
+                  "type": "string"
+                },
+                "indicator": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "criterion": {
+                  "type": "string"
+                },
+                "next_release": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date"
+                }
+              }
+            }
+          },
+          "candidates": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 5,
+            "items": {
+              "type": "object",
+              "required": [
+                "code",
+                "company_name",
+                "stage",
+                "viewpoint",
+                "side",
+                "rationale",
+                "break_conditions",
+                "next_catalyst",
+                "realization_prob",
+                "direction_clear"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "pattern": "^[0-9][0-9A-Z]{3}$",
+                  "description": "東証の銘柄コード(4桁。英字を含む新形式も可)"
+                },
+                "company_name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "stage": {
+                  "enum": [
+                    1,
+                    2,
+                    3
+                  ],
+                  "description": "連想の段数(3は3段目以降)"
+                },
+                "viewpoint": {
+                  "enum": [
+                    "経済",
+                    "投資家",
+                    "両方"
+                  ]
+                },
+                "side": {
+                  "enum": [
+                    "long",
+                    "caution"
+                  ]
+                },
+                "rationale": {
+                  "type": "string"
+                },
+                "break_conditions": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "next_catalyst": {
+                  "type": "string"
+                },
+                "realization_prob": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "direction_clear": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "rejected_candidates": {
+            "type": "array",
+            "description": "検討したが候補にしなかった銘柄",
+            "items": {
+              "type": "object",
+              "required": [
+                "code",
+                "company_name",
+                "reason"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "company_name": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "scenario",
+          "arrow_no",
+          "url",
+          "retrieved_at",
+          "value",
+          "source_tier",
+          "supports"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "scenario": {
+            "type": "string",
+            "description": "scenario_ref(新規)または scenario_id(既存)"
+          },
+          "arrow_no": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "0 は反証など矢印に属さないもの"
+          },
+          "url": {
+            "type": "string",
+            "pattern": "^https?://"
+          },
+          "retrieved_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "value": {
+            "type": "string"
+          },
+          "source_tier": {
+            "enum": [
+              1,
+              2,
+              3,
+              4
+            ]
+          },
+          "supports": {
+            "enum": [
+              "for",
+              "against"
+            ]
+          },
+          "published_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "統計などの公表日時"
+          }
+        }
+      }
+    },
+    "check_status": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "scenario",
+          "arrow_no",
+          "status"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "scenario": {
+            "type": "string"
+          },
+          "arrow_no": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "enum": [
+              "確認",
+              "否定",
+              "未確認"
+            ]
+          }
+        }
+      }
+    },
+    "theme_temperatures": {
+      "type": "array",
+      "description": "週1回の温度の更新(その日に行う場合だけ)",
+      "items": {
+        "type": "object",
+        "required": [
+          "theme_id",
+          "temperature",
+          "reason"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "theme_id": {
+            "type": "string"
+          },
+          "temperature": {
+            "enum": [
+              "上昇中",
+              "横ばい",
+              "冷却中"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "expected_rise": {
+      "type": "object",
+      "required": [
+        "low",
+        "median",
+        "high",
+        "basis"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "low": {
+          "type": "number",
+          "minimum": 0
+        },
+        "median": {
+          "type": "number",
+          "minimum": 0
+        },
+        "high": {
+          "type": "number",
+          "minimum": 0
+        },
+        "basis": {
+          "type": "string",
+          "description": "等級、影響額と時価総額の比、過去事例、時価総額の小ささなどの根拠"
+        }
+      },
+      "description": "想定上昇幅。TOPIX に対する超過上昇を小数で表す(0.4 = +40%)"
+    }
+  }
+}

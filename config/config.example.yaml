@@ -1,0 +1,28 @@
+# 設定ファイルの見本。config/config.yaml にコピーして編集する(config.yaml は git に入れない)。
+# パスは Windows でもそのまま書ける(例: D:/stock/data)。相対パスはリポジトリの直下からの位置。
+
+paths:
+  data_dir: data                 # DB・生データ・記録・レポートの置き場所
+  backup_dir: ""                 # 追記専用の記録の複製先(例: C:/Users/you/OneDrive/assoc_backup)。空なら複製しない
+
+prices:
+  # 既存の株価DBの読み方。S1 の確認結果に合わせて変更する(docs/DESIGN.md §11)
+  source: csv_dir                # csv_dir | yfinance_live
+  csv_dir: ""                    # source=csv_dir のとき、銘柄ごとの CSV が入ったフォルダ(例: D:/stock/prices)
+  csv_filename: "{code}.csv"     # 例: 7203.csv。列は date, open, high, low, close, volume
+  topix_code: "1306"             # TOPIX の代わりに使う ETF
+
+edinet:
+  api_key: ""                    # EDINET API のキー(無料登録)
+
+collect:
+  rss_feeds:
+    - name: NHK 主要ニュース
+      url: https://www.nhk.or.jp/rss/news/cat0.xml
+      tier: 2
+    - name: NHK 経済
+      url: https://www.nhk.or.jp/rss/news/cat5.xml
+      tier: 2
+  google_news_queries: []        # 注目度の計測用。テーマ語やイベントの語は自動で足される
+  request_interval_sec: 1.0      # 取得の間隔(相手先に負荷をかけない)
+  user_agent: "assoc-research/0.1 (personal use)"
