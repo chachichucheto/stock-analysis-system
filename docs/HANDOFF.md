@@ -152,6 +152,16 @@ git pull
 
 各収集器のファイルの冒頭に「ローカルで最初に確認すべき点」が書いてあります。
 
+株価DBがつながったら、続けて次を実行します。
+
+```powershell
+.\.venv\Scripts\python.exe -m assoc pastcase compute   # 過去事例30件の値動きを計算し、銘柄コードを照合する
+.\.venv\Scripts\python.exe -m assoc doctor
+powershell -ExecutionPolicy Bypass -File scripts\windows\register_tasks.ps1   # 残りのタスク(夕方・翌朝・翌日)も登録
+```
+
+`pastcase compute` で「⚠ 照合」と出た銘柄は、コードか社名が間違っています(`code_confidence: check` の銘柄を優先して確認)。
+
 ---
 
 ## 5. 更新の記録
@@ -160,3 +170,4 @@ git pull
 |---|---|---|
 | 2026-09-25 | 設計書一式(CONCEPT / DESIGN / DECISIONS / THEMES / ANALYSIS_PLAN) | なし |
 | 2026-09-25 | 実装一式(収集・足切り・入力パック・確定・ランキング・レポート・翌日の処理・月次の集計)、通し試験 | §0 の手順(収集だけ先に開始) |
+| 2026-09-25 | ダッシュボード、Fable の実装点検の反映(重大2件・重要11件ほか)、過去事例30件 | §0 の手順。株価DBの接続後に §4 の `pastcase compute` |
