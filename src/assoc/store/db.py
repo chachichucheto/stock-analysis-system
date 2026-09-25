@@ -1,6 +1,7 @@
 """収集データと計算結果の DB(DuckDB)。スクリプトで作り直せるものだけを置く(docs/DESIGN.md §4)。"""
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 import duckdb
@@ -46,9 +47,19 @@ CREATE TABLE IF NOT EXISTS fetch_log (
 """
 
 
-def connect(data_dir: Path) -> duckdb.DuckDBPyConnection:
+def connect(data_dir: Path, wait_sec: float = 120.0) -> duckdb.DuckDBPyConnection:
+    """DB を開く。DuckDB は同時に1つのプロセスしか書き込めないので、自動収集と手動の操作が
+    重なったときは、相手が終わるまで待ってから開く。"""
     data_dir = Path(data_dir)
     data_dir.mkdir(parents=True, exist_ok=True)
-    con = duckdb.connect(str(data_dir / "assoc.duckdb"))
+    deadline = time.monotonic() + wait_sec
+    while True:
+        try:
+            con = duckdb.connect(str(data_dir / "assoc.duckdb"))
+            break
+        except duckdb.IOException:
+            if time.monotonic() > deadline:
+                raise
+            time.sleep(2)
     con.execute(DDL)
     return con
