@@ -1,0 +1,54 @@
+case_id: PC0022
+title: 安保三文書閣議決定・防衛費GDP比2%目標
+event_date: 2022-12-16
+event_summary: >
+  2022年12月16日、岸田文雄内閣は「国家安全保障戦略」「国家防衛戦略」「防衛力整備
+  計画」のいわゆる安保三文書を閣議決定した。相手のミサイル発射拠点等を攻撃する
+  「反撃能力」の保有を明記し、2027年度までに防衛関係費をGDP比2%程度に達するよう
+  する方針を打ち出した(2023〜27年度の5年間で総額約43兆円)。
+theme_ids: [P15, F04]
+time_type: 予定日
+related:
+  - code: "7011"
+    company_name: 三菱重工業
+    stage: 1
+    viewpoint: 経済
+    why_related: 防衛装備品の中核企業として、防衛費増額の直接的な受益者
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "7012"
+    company_name: 川崎重工業
+    stage: 1
+    viewpoint: 経済
+    why_related: 同上。防衛航空機・艦艇関連の受益者
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "6503"
+    company_name: 三菱電機
+    stage: 2
+    viewpoint: 投資家
+    why_related: 防衛用レーダー・電子機器メーカーとしての連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "7013"
+    company_name: IHI
+    stage: 2
+    viewpoint: 投資家
+    why_related: 艦艇用エンジン・防衛関連機器メーカーとしての連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+notes: >
+  ロシアのウクライナ侵攻(PC0005)を背景に「シナリオが強化された」典型例。
+  ウクライナ侵攻直後の防衛関連株の反応と、実際に予算・法制度が固まった本閣議決定
+  時点での反応を比較することで、「事実の確定度」による反応の違いを検証できる。
+sources:
+  - https://ja.wikipedia.org/wiki/%E5%AE%89%E4%BF%9D%E4%B8%89%E6%96%87%E6%9B%B8
+  - https://www.nikkei.com/article/DGXZQOUA146QM0U2A211C2000000/

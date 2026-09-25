@@ -1,0 +1,63 @@
+case_id: PC0029
+title: TSMC熊本第1工場(JASM)開所式
+event_date: 2024-02-24
+event_summary: >
+  2024年2月24日、台湾TSMCが主導する日本の半導体製造合弁会社JASM(ソニーグループ・
+  デンソーが出資)の熊本第1工場が開所式を迎えた。TSMC創業者モリス・チャンや
+  トヨタ自動車の豊田章男会長らが出席し、同年10〜12月期の量産開始が予定された。
+  同日には第2工場建設(2027年稼働予定)への政府支援も発表された。
+theme_ids: [P01]
+time_type: 単発
+related:
+  - code: "8035"
+    company_name: 東京エレクトロン
+    stage: 1
+    viewpoint: 経済
+    why_related: 半導体製造装置をJASMに納入する企業として直接的な受益者
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "6920"
+    company_name: レーザーテック
+    stage: 2
+    viewpoint: 投資家
+    why_related: 半導体検査装置需要拡大の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "6758"
+    company_name: ソニーグループ
+    stage: 1
+    viewpoint: 経済
+    why_related: JASMへの出資企業(イメージセンサー工場との相乗効果が期待された)
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "6902"
+    company_name: デンソー
+    stage: 1
+    viewpoint: 経済
+    why_related: JASMへの出資企業
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "1812"
+    company_name: 鹿島建設
+    stage: 2
+    viewpoint: 投資家
+    why_related: 熊本の大型工場建設を手がけるゼネコンとしての連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+notes: >
+  熊本地震(PC0002)で被災したソニーの半導体拠点と同じ地域に、国策級の巨大投資が
+  行われた点で対比できる。「熊本=半導体」という投資家の連想が地震報道と工場進出
+  報道の両方で繰り返し働いていることが確認できる。
+sources:
+  - https://monoist.itmedia.co.jp/mn/articles/2402/27/news084.html
+  - https://global-net.co.jp/archives/9159

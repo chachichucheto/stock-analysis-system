@@ -1,0 +1,54 @@
+case_id: PC0021
+title: 日銀マイナス金利政策解除
+event_date: 2024-03-19
+event_summary: >
+  2024年3月18〜19日の金融政策決定会合で、日本銀行はマイナス金利政策・イールド
+  カーブ・コントロール(YCC)・オーバーシュート型コミットメントの「トリプル解除」を
+  決定した。政策金利は無担保コール翌日物で0〜0.1%程度に引き上げられ、利上げは
+  17年ぶりとなった。銀行・保険株が買われた。
+theme_ids: [F06, M15]
+time_type: 予定日
+related:
+  - code: "8306"
+    company_name: 三菱UFJフィナンシャル・グループ
+    stage: 1
+    viewpoint: 経済
+    why_related: 金利上昇による資金運用利ざや改善の直接的な受益者
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "8411"
+    company_name: みずほフィナンシャルグループ
+    stage: 1
+    viewpoint: 経済
+    why_related: 同上
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "8766"
+    company_name: 東京海上ホールディングス
+    stage: 2
+    viewpoint: 投資家
+    why_related: 保険会社も資産運用利回り改善で恩恵を受けるとの連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "8802"
+    company_name: 三菱地所
+    stage: 2
+    viewpoint: 投資家
+    why_related: 住宅ローン金利上昇による不動産需要への逆風の連想(悪材料の側面)
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+notes: >
+  「金利のある世界」への転換点として位置づけられ、その後2025年以降も日銀の
+  追加利上げ観測のたびに銀行株が繰り返し物色されている。異次元緩和導入(PC0020)
+  とは逆方向の政策転換であり、対になる事例として参照できる。
+sources:
+  - https://www.nikkei.com/article/DGXZQOUB190HW0Z10C24A3000000/
+  - https://www.mri.co.jp/knowledge/insight/dep/2024/0319.html

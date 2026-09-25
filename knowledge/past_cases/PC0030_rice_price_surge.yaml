@@ -1,0 +1,60 @@
+case_id: PC0030
+title: コメ価格高騰・政府備蓄米放出方針転換(令和のコメ騒動)
+event_date: 2025-02-14
+event_summary: >
+  令和6年(2024年)産米の価格が右肩上がりで上昇し、2025年1月以降は関東銘柄米などで
+  前年比約3倍の水準に達する「令和のコメ騒動」が発生した。2024年10月時点では
+  政府は備蓄米放出に慎重だったが、価格高騰が続いたことを受けて方針を転換し、
+  2025年1月31日に備蓄米の運用ルールを見直したうえで、2025年2月14日に政府備蓄米の
+  放出を正式決定した。
+theme_ids: [M23]
+time_type: 局面展開
+phases:
+  - name: 価格高騰・品薄
+    until: 2025-01-31
+  - name: 備蓄米放出・価格対策
+    until: 2025-12-31
+related:
+  - code: "3563"
+    company_name: フード&ライフカンパニーズ
+    stage: 1
+    viewpoint: 経済
+    why_related: 原価に占める米の比率が高い回転寿司チェーンで、コスト増懸念の連想(悪材料の側面)
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "6310"
+    company_name: 井関農機
+    stage: 2
+    viewpoint: 投資家
+    why_related: 稲作関連の農業機械メーカーとして、増産・設備投資拡大への期待の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "2875"
+    company_name: 東洋水産
+    stage: 2
+    viewpoint: 投資家
+    why_related: 即席麺など米の代替となる食品への需要シフトの連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+  - code: "2897"
+    company_name: 日清食品ホールディングス
+    stage: 2
+    viewpoint: 投資家
+    why_related: 同上。米価高騰による代替食品需要拡大の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+notes: >
+  農林水産省の備蓄米放出という「政府の対応」が起動条件となる局面展開型の事例。
+  備蓄米放出後も価格高騰が続いたとの報道があり(2025年後半)、対策の効果自体が
+  限定的だった可能性がある点は今後の局面の追加として記録・更新する必要がある。
+sources:
+  - https://www.mri.co.jp/knowledge/column/20250311_2.html
+  - https://www.komei.or.jp/komechan/safety/cost-of-rice-202508/

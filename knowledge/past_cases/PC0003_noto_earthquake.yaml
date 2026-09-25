@@ -1,0 +1,70 @@
+case_id: PC0003
+title: 令和6年能登半島地震
+event_date: 2024-01-01
+event_summary: >
+  2024年1月1日16時10分頃、石川県能登地方を震源とするM7.6・最大震度7の地震が発生
+  (令和6年能登半島地震)。輪島市・志賀町などで震度7を観測し、北陸電力志賀原子力発電所
+  でも変圧器の不具合などが確認された。
+theme_ids: [E01, P10]
+time_type: 局面展開
+phases:
+  - name: パニック・被害拡大
+    until: 2024-01-10
+  - name: 復旧・観光への影響
+    until: 2024-03-31
+  - name: 復興予算・実需
+    until: 2024-12-31
+related:
+  - code: "1861"
+    company_name: 熊谷組
+    stage: 1
+    viewpoint: 経済
+    why_related: 北陸地方に地盤を持つ準大手ゼネコンとして復旧工事の受注が期待された
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+  - code: "1928"
+    company_name: 積水ハウス
+    stage: 2
+    viewpoint: 投資家
+    why_related: 仮設住宅・住宅再建需要の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "5938"
+    company_name: LIXIL
+    stage: 2
+    viewpoint: 投資家
+    why_related: 住宅設備・修繕需要の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "9505"
+    company_name: 北陸電力
+    stage: 1
+    viewpoint: 両方
+    why_related: 震源地に近い電力会社で、志賀原子力発電所の設備不具合が報じられ供給不安の連想が生じた
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "8113"
+    company_name: ユニ・チャーム
+    stage: 2
+    viewpoint: 投資家
+    why_related: 断水・避難生活に伴う衛生用品需要の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+notes: >
+  能登地方は輪島塗・観光業など地場産業の被害も大きく、地域経済への影響が長期化した。
+  復興予算の規模や執行時期は逐次報道されており、「復興需要」局面の起動条件(補正予算の
+  成立等)は今後の事例更新で確定させる必要がある。
+sources:
+  - https://www.gsi.go.jp/uchusokuchi/20240101noto.html
+  - https://ja.wikipedia.org/wiki/%E8%83%BD%E7%99%BB%E5%8D%8A%E5%B3%B6%E5%9C%B0%E9%9C%87_(2024%E5%B9%B4)
+  - https://ds.data.jma.go.jp/eqev/data/kyoshin/jishin/2401011612_noto/index.html

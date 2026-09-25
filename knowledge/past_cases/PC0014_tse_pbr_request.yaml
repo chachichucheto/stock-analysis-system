@@ -1,0 +1,54 @@
+case_id: PC0014
+title: 東証「資本コストや株価を意識した経営」要請
+event_date: 2023-03-31
+event_summary: >
+  2023年3月31日、東京証券取引所はプライム市場・スタンダード市場の全上場会社に対し
+  「資本コストや株価を意識した経営の実現に向けた対応」を要請した。プライム市場の
+  約半数、スタンダード市場の約6割がROE8%未満・PBR1倍割れという状況が背景にあり、
+  自己株買いや政策保有株縮減など資本効率改善への取り組みが広く物色された。
+theme_ids: [F07]
+time_type: 単発
+related:
+  - code: "8306"
+    company_name: 三菱UFJフィナンシャル・グループ
+    stage: 1
+    viewpoint: 経済
+    why_related: 銀行株はPBR1倍割れの代表格であり、改善期待の直接的な連想先
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "8802"
+    company_name: 三菱地所
+    stage: 2
+    viewpoint: 投資家
+    why_related: 保有資産価値に対して株価が割安とされる不動産株の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "7203"
+    company_name: トヨタ自動車
+    stage: 2
+    viewpoint: 投資家
+    why_related: 政策保有株縮減・自己株買いのモデルケースとしての連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+  - code: "7261"
+    company_name: マツダ
+    stage: 2
+    viewpoint: 投資家
+    why_related: PBR1倍割れの自動車株として資本効率改善期待の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+notes: >
+  効果が数か月〜数年にわたって続いた制度的な要請であり、単発の材料というより
+  「テーマの温度」を継続的に押し上げた面が強い。2024年1月の対応企業一覧公表など
+  節目のたびに関連株が物色されており、シナリオの強化の事例としても参照できる。
+sources:
+  - https://www.pwc.com/jp/ja/knowledge/column/capital-policy/pbr1.html
+  - https://www.jpx.co.jp/news/1020/20240115-01.html

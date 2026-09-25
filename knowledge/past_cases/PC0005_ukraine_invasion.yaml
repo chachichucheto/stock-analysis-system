@@ -1,0 +1,68 @@
+case_id: PC0005
+title: ロシアによるウクライナ侵攻
+event_date: 2022-02-24
+event_summary: >
+  2022年2月24日、ロシアがウクライナへの本格的な軍事侵攻を開始した。北(ベラルーシ
+  経由)・東(ドンバス)・南(クリミア)の3方向からの侵攻で、原油・天然ガス・穀物などの
+  資源価格が急騰し、日本でも防衛・資源・エネルギー安全保障関連の物色が強まった。
+theme_ids: [E03, G03, M13, P15]
+time_type: 局面展開
+phases:
+  - name: 開戦・資源価格急騰
+    until: 2022-03-31
+  - name: 防衛・エネルギー安全保障
+    until: 2022-12-31
+  - name: 長期化・穀物/資源の高止まり
+    until: 2023-12-31
+related:
+  - code: "1605"
+    company_name: INPEX
+    stage: 1
+    viewpoint: 経済
+    why_related: 原油・天然ガス価格急騰の直接的な受益者
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "5019"
+    company_name: 出光興産
+    stage: 2
+    viewpoint: 投資家
+    why_related: 資源高メリットの連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "7011"
+    company_name: 三菱重工業
+    stage: 2
+    viewpoint: 投資家
+    why_related: 防衛関連の中心企業として、防衛費増額期待の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "2002"
+    company_name: 日清製粉グループ本社
+    stage: 2
+    viewpoint: 投資家
+    why_related: ウクライナ・ロシアは小麦の主要産地で、穀物価格高騰による製粉会社への影響の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "5713"
+    company_name: 住友金属鉱山
+    stage: 2
+    viewpoint: 投資家
+    why_related: 地政学リスクの高まりによる金価格上昇の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+notes: >
+  防衛関連(三菱重工業など)は、その後の安保三文書閣議決定(PC0022)で材料が強化される
+  「シナリオの強化」の典型例。穀物・資源高は日清製粉のように原材料コスト増としては
+  むしろ逆風になり得る面もあり、方向の解釈が分かれる点に留意。
+sources:
+  - https://ja.wikipedia.org/wiki/%E3%83%AD%E3%82%B7%E3%82%A2%E3%81%AE%E3%82%A6%E3%82%AF%E3%83%A9%E3%82%A4%E3%83%8A%E4%BE%B5%E6%94%BB

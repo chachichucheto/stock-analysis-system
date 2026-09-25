@@ -1,0 +1,47 @@
+case_id: PC0009
+title: 日本製鉄によるUSスチール買収発表
+event_date: 2023-12-18
+event_summary: >
+  2023年12月18日、日本製鉄は米鉄鋼大手USスチールを約141億ドル(約2兆円、1株55ドル)で
+  買収し完全子会社化すると発表した。発表前日終値に対し約4割のプレミアムだったことも
+  あり、財務負担への警戒から発表翌日(19日)の東京市場で日本製鉄株は一時6%下落した。
+  その後米国で政治問題化し、バイデン大統領が2025年1月に買収中止命令を出したが、
+  トランプ大統領が一転承認し2025年6月18日に買収が完了した。
+theme_ids: [G01]
+time_type: 単発
+related:
+  - code: "5401"
+    company_name: 日本製鉄
+    stage: 1
+    viewpoint: 両方
+    why_related: 買収を発表した当事会社。プレミアム負担への警戒から株価は下落した(上がらなかった例)
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "5411"
+    company_name: JFEホールディングス
+    stage: 2
+    viewpoint: 投資家
+    why_related: 同業大手として、鉄鋼業界の再編・海外展開強化への連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "5406"
+    company_name: 神戸製鋼所
+    stage: 2
+    viewpoint: 投資家
+    why_related: 鉄鋼セクター全体への物色の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+notes: >
+  当事会社自体が悪材料で下落した「1段目が反応しない(むしろ逆行安)」の代表例。
+  買収の帰趨(バイデン政権の中止命令→トランプ政権の承認)は2025年にまたがる長い
+  経緯を持つが、ここでは市場が最初に反応した発表日を起点とする単発型として扱う。
+sources:
+  - https://www.nipponsteel.com/common/secure/ir/library/pdf/20231218_100.pdf
+  - https://kabutan.jp/news/marketnews/?b=n202312190258
+  - https://www.jetro.go.jp/biznews/2025/06/355b114b1a1c0119.html

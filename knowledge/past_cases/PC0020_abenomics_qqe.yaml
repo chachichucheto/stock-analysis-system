@@ -1,0 +1,55 @@
+case_id: PC0020
+title: アベノミクス第一の矢・異次元金融緩和
+event_date: 2013-04-04
+event_summary: >
+  2013年4月4日、就任間もない黒田東彦・日本銀行総裁のもとで日銀は「量的・質的金融
+  緩和」(異次元緩和)の導入を決定した。マネタリーベースを2年間で2倍にする大規模な
+  国債買い入れなどを柱とし、急速な円安・株高が進んだ「アベノミクス相場」の起点と
+  なった。
+theme_ids: [F06, M11]
+time_type: 予定日
+related:
+  - code: "7203"
+    company_name: トヨタ自動車
+    stage: 1
+    viewpoint: 経済
+    why_related: 円安による輸出採算改善の直接的な受益者
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "6758"
+    company_name: ソニーグループ
+    stage: 1
+    viewpoint: 経済
+    why_related: 円安による輸出企業の業績改善期待
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "8306"
+    company_name: 三菱UFJフィナンシャル・グループ
+    stage: 2
+    viewpoint: 投資家
+    why_related: 金融緩和による株高・不動産融資拡大への連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "8801"
+    company_name: 三井不動産
+    stage: 2
+    viewpoint: 投資家
+    why_related: 金融緩和による不動産市況回復・REIT買入拡大の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+notes: >
+  「アベノミクス」はその後数年にわたるテーマとしての性格が強いが、ここでは
+  市場が最も強く反応した2013年4月4日の量的・質的金融緩和の決定を起点の
+  単一イベントとして記録した。日銀のマイナス金利解除(PC0021)は、その逆方向の
+  転換点として対比できる。
+sources:
+  - https://www.boj.or.jp/mopo/mpmdeci/mpr_2013/k130404a.pdf
+  - https://ja.wikipedia.org/wiki/%E9%87%8F%E7%9A%84%E3%83%BB%E8%B3%AA%E7%9A%84%E9%87%91%E8%9E%8D%E7%B7%A9%E5%92%8C

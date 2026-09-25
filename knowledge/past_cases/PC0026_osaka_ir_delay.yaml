@@ -1,0 +1,56 @@
+case_id: PC0026
+title: 大阪IR区域整備計画認定と開業延期
+event_date: 2023-04-14
+event_summary: >
+  2023年4月14日、国土交通大臣が大阪・夢洲地区の特定複合観光施設(IR)区域整備計画を
+  認定し、国内初のカジノを含む統合型リゾートの実現に向けて動き出した。しかし
+  審査の遅れや物価上昇の影響で、認定時点で2029年秋〜冬ごろとされていた開業時期は
+  同年9月の計画修正で2030年秋ごろに後ろ倒しされ、初期投資額も約1,900億円増の
+  約1兆2,700億円に修正された。
+theme_ids: [M24, M28]
+time_type: 予定日
+related:
+  - code: "1802"
+    company_name: 大成建設
+    stage: 1
+    viewpoint: 経済
+    why_related: IR施設の建設を受注した大手ゼネコンとしての直接的な連想先
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "9021"
+    company_name: 西日本旅客鉄道
+    stage: 2
+    viewpoint: 投資家
+    why_related: 夢洲アクセス整備(鉄道延伸)による輸送需要拡大の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "8802"
+    company_name: 三菱地所
+    stage: 2
+    viewpoint: 投資家
+    why_related: 大阪臨海部の再開発への波及期待の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+  - code: "9202"
+    company_name: ANAホールディングス
+    stage: 2
+    viewpoint: 投資家
+    why_related: IR開業によるインバウンド需要拡大への期待の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+notes: >
+  【失敗/期待先行例】認定という「予定日型」の起動条件は満たされたものの、
+  開業という最終的な実需の顕在化は当初想定より1年程度後ろ倒しとなった。
+  「認定=材料出尽くし」なのか「開業までまだ長い=まだ早い」なのか、市場の
+  受け止め方が分かれた事例として記録する。
+sources:
+  - https://www.mlit.go.jp/kankocho/news11_0414.html
+  - https://saitoshika-west.com/blog-entry-8912.html

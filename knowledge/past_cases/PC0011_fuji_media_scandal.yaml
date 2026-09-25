@@ -1,0 +1,55 @@
+case_id: PC0011
+title: フジ・メディアHD 中居正広氏問題によるガバナンス不祥事
+event_date: 2025-01-17
+event_summary: >
+  2024年末に報じられたタレント中居正広氏を巡るトラブルについて、2025年1月17日に
+  フジテレビの港浩一社長が記者会見を開き、社員の関与を否定した上で第三者委員会を
+  設置すると発表した。米アクティビストのダルトン・インベストメンツは1月14日付書簡で
+  第三者委員会の設置を要求するなど、スポンサー離れとガバナンス問題が急速に表面化した。
+theme_ids: [M16]
+time_type: 単発
+related:
+  - code: "4676"
+    company_name: フジ・メディア・ホールディングス
+    stage: 1
+    viewpoint: 投資家
+    why_related: 当事会社。スポンサー離れ懸念とアクティビスト思惑で株価が乱高下した
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "9401"
+    company_name: TBSホールディングス
+    stage: 2
+    viewpoint: 投資家
+    why_related: 同業のガバナンス体制・株式持ち合い解消への連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "9409"
+    company_name: テレビ朝日ホールディングス
+    stage: 2
+    viewpoint: 投資家
+    why_related: 同上
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "9404"
+    company_name: 日本テレビホールディングス
+    stage: 2
+    viewpoint: 投資家
+    why_related: 同上
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+notes: >
+  フジHD株は2025年1月20日に一時8%高となる一方、1月23日の中居氏引退報道後は
+  一時7.8%安となるなど、同一の材料の中でも報道内容によって方向が反転した。
+  「1つのニュースでも続報次第で方向が変わる」ことを示す事例として記録した。
+sources:
+  - https://www.bloomberg.co.jp/news/articles/2025-01-23/SQIVVAT1UM0W00
+  - https://www.nikkei.com/article/DGXZQOGN14DAN0U5A110C2000000/
+  - https://diamond.jp/articles/-/357503

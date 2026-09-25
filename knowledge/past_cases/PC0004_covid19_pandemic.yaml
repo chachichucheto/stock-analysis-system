@@ -1,0 +1,78 @@
+case_id: PC0004
+title: 新型コロナウイルス感染拡大
+event_date: 2020-01-16
+event_summary: >
+  2020年1月16日、日本国内で新型コロナウイルスの感染者が初めて確認された。その後
+  世界的に感染が拡大し、2020年1月30日にWHOが「国際的に懸念される公衆衛生上の緊急
+  事態」を宣言。2月下旬から世界的な株安が進み、日本でも2020年4月7日に緊急事態宣言が
+  発出された。
+theme_ids: [E02]
+time_type: 局面展開
+phases:
+  - name: パニック(世界的株安)
+    until: 2020-03-19
+  - name: 巣ごもり・衛生関連
+    until: 2020-12-31
+  - name: ワクチン期待・経済再開
+    until: 2021-12-31
+related:
+  - code: "4568"
+    company_name: 第一三共
+    stage: 1
+    viewpoint: 経済
+    why_related: ワクチン・治療薬開発企業としての直接的な連想先
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "4523"
+    company_name: エーザイ
+    stage: 2
+    viewpoint: 投資家
+    why_related: 大手医薬品メーカーとしてコロナ関連の連想で物色された
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "8113"
+    company_name: ユニ・チャーム
+    stage: 1
+    viewpoint: 経済
+    why_related: マスク・衛生用品メーカーとしての直接的な受益者
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "7974"
+    company_name: 任天堂
+    stage: 2
+    viewpoint: 投資家
+    why_related: 巣ごもり需要でゲーム機・ソフトの販売増が見込まれた連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "9201"
+    company_name: 日本航空
+    stage: 1
+    viewpoint: 経済
+    why_related: 渡航制限で航空需要が蒸発し急落した(悪材料で下がった代表例)
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "4776"
+    company_name: サイボウズ
+    stage: 2
+    viewpoint: 投資家
+    why_related: リモートワーク普及によるグループウェア需要拡大の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+notes: >
+  局面展開型の代表例。パニック局面では全面安となり航空・鉄道・外食などが急落する一方、
+  衛生用品・巣ごもり関連は物色された。ワクチン開発報道(PC0007)は本事例の一局面を
+  さらに単発型として切り出したもの。
+sources:
+  - https://ja.wikipedia.org/wiki/%E6%97%A5%E6%9C%AC%E3%81%AB%E3%81%8A%E3%81%91%E3%82%8B%E6%96%B0%E5%9E%8B%E3%82%B3%E3%83%AD%E3%83%8A%E3%82%A6%E3%82%A4%E3%83%AB%E3%82%B9%E6%84%9F%E6%9F%93%E7%97%87%E3%81%AE%E6%B5%81%E8%A1%8C

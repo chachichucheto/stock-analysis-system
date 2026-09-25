@@ -1,0 +1,56 @@
+case_id: PC0024
+title: 消費税率10%への引き上げ・軽減税率制度導入
+event_date: 2019-10-01
+event_summary: >
+  2019年10月1日、消費税率が8%から10%に引き上げられた(2015年10月の予定から2度の
+  延期を経て実施)。同時に、酒類・外食を除く飲食料品等を対象に税率を8%に据え置く
+  軽減税率制度が導入された。増税に伴う消費の落ち込み懸念から小売・外食株が売られる
+  一方、キャッシュレス決済のポイント還元策などが並行して実施され、関連銘柄が
+  物色された。
+theme_ids: [F01]
+time_type: 予定日
+related:
+  - code: "3382"
+    company_name: セブン&アイ・ホールディングス
+    stage: 1
+    viewpoint: 経済
+    why_related: 食品小売として軽減税率の適用対象が多く、相対的な影響の小ささが意識された
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "8267"
+    company_name: イオン
+    stage: 1
+    viewpoint: 経済
+    why_related: 総合小売として増税による消費の落ち込み懸念の直接的な当事者
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "9843"
+    company_name: ニトリホールディングス
+    stage: 2
+    viewpoint: 投資家
+    why_related: 増税前の駆け込み需要とその反動減の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "3092"
+    company_name: ZOZO
+    stage: 2
+    viewpoint: 投資家
+    why_related: キャッシュレス決済・ポイント還元策の恩恵を受けるEC事業者としての連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+notes: >
+  「予定日型」の典型例で、施行日の数か月前から駆け込み需要・軽減税率対応の報道が
+  先行し、施行後は反動減が話題になるという、材料の賞味期限が施行日を挟んで
+  前後に伸びる特徴を持つ。将来の消費税率変更(引き下げを含む)の議論を評価する際の
+  比較対象として有用。
+sources:
+  - https://www.nikkei.com/article/DGKKZO76186440Q1A930C2EAC000/
+  - https://www.mof.go.jp/tax_policy/summary/consumption/consumption_tax/index.html

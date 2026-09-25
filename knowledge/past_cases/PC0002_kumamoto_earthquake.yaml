@@ -1,0 +1,70 @@
+case_id: PC0002
+title: 熊本地震
+event_date: 2016-04-14
+event_summary: >
+  2016年4月14日21時26分にM6.5・最大震度7の「前震」が熊本県益城町で発生。気象庁観測史上
+  初めて、その約28時間後の4月16日1時25分にM7.3・最大震度7の「本震」が発生した。熊本県
+  菊陽町にはソニーの半導体(イメージセンサー)工場があり、被災によりサプライチェーンが
+  混乱した。
+theme_ids: [E01, P10]
+time_type: 局面展開
+phases:
+  - name: パニック・被害拡大
+    until: 2016-04-20
+  - name: 復旧・供給網混乱
+    until: 2016-06-30
+  - name: 復興需要
+    until: 2016-12-31
+related:
+  - code: "1820"
+    company_name: 西松建設
+    stage: 1
+    viewpoint: 経済
+    why_related: 復旧・復興工事を受注する大手ゼネコンとしての連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "6758"
+    company_name: ソニーグループ
+    stage: 1
+    viewpoint: 経済
+    why_related: 熊本県菊陽町のイメージセンサー工場が被災し、供給網混乱で売られた(上がらなかった例)
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "5938"
+    company_name: LIXIL
+    stage: 2
+    viewpoint: 投資家
+    why_related: 住宅設備・修繕需要の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "1925"
+    company_name: 大和ハウス工業
+    stage: 2
+    viewpoint: 投資家
+    why_related: 応急仮設住宅・戸建て再建需要の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "8113"
+    company_name: ユニ・チャーム
+    stage: 2
+    viewpoint: 投資家
+    why_related: 断水・避難生活が続く中での紙おむつ等の衛生用品需要の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+notes: >
+  ソニーは震源地に近い工場を持つ「1段目」の当事会社だが、被災による稼働停止という
+  悪材料で下落した。地震関連の連想は「建設・復興需要は買い」「被災地の生産拠点を持つ
+  企業は売り」の両方が同時に起こり得ることを示す事例。
+sources:
+  - https://ja.wikipedia.org/wiki/%E7%86%8A%E6%9C%AC%E5%9C%B0%E9%9C%87_(2016%E5%B9%B4)
+  - https://typhoon.yahoo.co.jp/weather/calendar/29/

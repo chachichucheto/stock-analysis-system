@@ -1,0 +1,57 @@
+case_id: PC0023
+title: 高市内閣発足
+event_date: 2025-10-21
+event_summary: >
+  2025年10月21日、国会の首相指名選挙で高市早苗氏が第104代内閣総理大臣に指名され、
+  同日夜に自民党と日本維新の会による連立の高市内閣が発足した。日本初の女性首相
+  であり、防衛費のさらなる増額路線や積極財政、金融政策運営など経済政策の方向性に
+  関心が集まった。
+theme_ids: [P15, F04, F06]
+time_type: 予定日
+related:
+  - code: "7011"
+    company_name: 三菱重工業
+    stage: 2
+    viewpoint: 投資家
+    why_related: 防衛費増額路線の継続・加速期待による連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "8306"
+    company_name: 三菱UFJフィナンシャル・グループ
+    stage: 2
+    viewpoint: 投資家
+    why_related: 積極財政・金利観測を背景とした銀行株物色の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "9984"
+    company_name: ソフトバンクグループ
+    stage: 2
+    viewpoint: 投資家
+    why_related: 成長戦略・AI政策への期待による値がさ・グロース株物色の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+  - code: "1605"
+    company_name: INPEX
+    stage: 2
+    viewpoint: 投資家
+    why_related: 資源・エネルギー安全保障政策の強化への連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+notes: >
+  内閣発足自体は確認できたが、具体的な政策(防衛費のさらなる増額幅、金融政策への
+  スタンスなど)は本レポート作成時点(2026年9月)でも順次具体化が進んでいる段階であり、
+  関連銘柄への影響は暫定的なものとして扱う必要がある。`THEMES.md` の政策関連ID
+  (P15・F04・F06)を仮に当てたが、高市政権固有の政策(例:戦略17分野の推進体制)が
+  固まり次第、本事例の theme_ids や related を見直すべきである。
+sources:
+  - https://www.kantei.go.jp/jp/104/actions/202510/21shimei.html
+  - https://www.nikkei.com/article/DGXZQOUA214F60R21C25A0000000/
+  - https://www.jiji.com/jc/article?k=2025102100126&g=pol

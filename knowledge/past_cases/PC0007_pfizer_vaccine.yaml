@@ -1,0 +1,53 @@
+case_id: PC0007
+title: ファイザー製ワクチン有効性発表
+event_date: 2020-11-09
+event_summary: >
+  2020年11月9日、米ファイザー社は開発中の新型コロナワクチンについて、第3相臨床試験の
+  中間解析で90%を超える発症予防効果が確認されたと発表した。経済再開・渡航再開への
+  期待から、いわゆる「ワクチン相場」でグロース株から出遅れ景気敏感株・旅行関連株への
+  資金シフトが起きた。
+theme_ids: [E02]
+time_type: 単発
+related:
+  - code: "4568"
+    company_name: 第一三共
+    stage: 2
+    viewpoint: 投資家
+    why_related: 国内でも新型コロナワクチンの開発が進むとの連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "4901"
+    company_name: 富士フイルムホールディングス
+    stage: 2
+    viewpoint: 投資家
+    why_related: 抗インフルエンザ薬「アビガン」の開発や受託製造での連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "9201"
+    company_name: 日本航空
+    stage: 1
+    viewpoint: 経済
+    why_related: ワクチン普及による渡航再開期待で、それまで売られていた反動から買われた
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "9602"
+    company_name: 東宝
+    stage: 2
+    viewpoint: 投資家
+    why_related: 経済再開によるレジャー・映画館需要回復の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+notes: >
+  発表当日、米国市場ではハイテク株が売られ景気敏感株が買われる「ワクチン・ローテーション」
+  が起きたことで知られる。日本株でも同様のセクターローテーションが観測された。
+sources:
+  - https://www.nikkei.com/article/DGXMZO66016210Z01C20A1EA1000/
+  - https://www.cnn.co.jp/business/35162182.html

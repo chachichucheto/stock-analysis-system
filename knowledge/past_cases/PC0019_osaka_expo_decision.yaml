@@ -1,0 +1,54 @@
+case_id: PC0019
+title: 大阪・関西万博 開催地決定
+event_date: 2018-11-23
+event_summary: >
+  2018年11月23日(現地時間)、パリで開催された第164次BIE(博覧会国際事務局)総会で
+  投票が行われ、決選投票で日本(大阪)が92票、ロシア(エカテリンブルク)が61票を獲得し、
+  2025年国際博覧会(大阪・関西万博)の開催地が大阪・夢洲に決定した。会期は
+  2025年4月13日〜10月13日(当初発表時点では5月3日〜11月3日案)。
+theme_ids: [M24, M28]
+time_type: 予定日
+related:
+  - code: "1802"
+    company_name: 大成建設
+    stage: 1
+    viewpoint: 経済
+    why_related: 万博会場(夢洲)のインフラ整備・大屋根(リング)などの建設を担う大手ゼネコン
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "9021"
+    company_name: 西日本旅客鉄道
+    stage: 2
+    viewpoint: 投資家
+    why_related: 大阪への交通アクセス整備・観光需要拡大の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "8802"
+    company_name: 三菱地所
+    stage: 2
+    viewpoint: 投資家
+    why_related: 夢洲を含む大阪臨海部の再開発への参画期待の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+  - code: "9202"
+    company_name: ANAホールディングス
+    stage: 2
+    viewpoint: 投資家
+    why_related: 訪日客増加によるインバウンド需要拡大の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+notes: >
+  会場建設費の増額や一部パビリオンの建設遅延など、開催決定から開幕(2025年4月)までの
+  間にネガティブな報道も複数あり、鮮度と織り込み度の推移を追ううえで参考になる。
+  IR(統合型リゾート、PC0026)とは夢洲という立地面で関連するテーマである。
+sources:
+  - https://ja.wikipedia.org/wiki/2025%E5%B9%B4%E6%97%A5%E6%9C%AC%E5%9B%BD%E9%9A%9B%E5%8D%9A%E8%A6%A7%E4%BC%9A
+  - https://www.jiji.com/jc/graphics?p=ve_pol_seisaku-kankou20181117j-04-w390

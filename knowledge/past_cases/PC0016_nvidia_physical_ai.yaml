@@ -1,0 +1,56 @@
+case_id: PC0016
+title: NVIDIA CES2025基調講演「フィジカルAI」発表
+event_date: 2025-01-06
+event_summary: >
+  2025年1月6日(現地時間)、米NVIDIAのジェンスン・フアンCEOはCES2025の基調講演で、
+  AIが知覚AI・生成AIに続き「フィジカルAI(現実世界で認識・推論・計画・行動できるAI)」
+  の段階に入りつつあると位置づけ、ロボット向け基盤モデル群「Cosmos」などを発表した。
+  「汎用ロボットにとってのChatGPTの瞬間はすぐそこまで来ている」と述べたことが
+  広く報じられ、日本のロボット・自動化関連株が物色された。
+theme_ids: [P01, M03]
+time_type: 単発
+related:
+  - code: "6954"
+    company_name: ファナック
+    stage: 1
+    viewpoint: 経済
+    why_related: 産業用ロボット国内最大手であり、フィジカルAI・ロボティクスの直接的な連想先
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "6506"
+    company_name: 安川電機
+    stage: 1
+    viewpoint: 経済
+    why_related: 同上。産業用ロボット・モーション制御大手
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "6501"
+    company_name: 日立製作所
+    stage: 2
+    viewpoint: 投資家
+    why_related: 生成AI・ロボティクス関連事業への期待の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "6592"
+    company_name: マブチモーター
+    stage: 2
+    viewpoint: 投資家
+    why_related: 小型モーターメーカーとして、ロボット向け部品需要拡大の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+notes: >
+  「フィジカルAI」という言葉自体は2025年1月のCESで注目を集めたが、2026年のCESでも
+  同様のメッセージ(「ChatGPT moment for physical AI」)が繰り返されており、
+  テーマとしてまだ実現(量産・普及)を伴っていない「期待先行」段階にある点に注意。
+sources:
+  - https://blogs.nvidia.com/blog/ces-2025-jensen-huang/
+  - https://www.forbes.com/sites/moorinsights/2025/01/24/nvidia-brings-ai-to-the-physical-world-at-ces-2025/
+  - https://www.axios.com/2026/01/05/nvidia-ces-2026-jensen-huang-speech-ai

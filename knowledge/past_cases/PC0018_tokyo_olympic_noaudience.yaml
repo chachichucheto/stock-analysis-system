@@ -1,0 +1,55 @@
+case_id: PC0018
+title: 東京オリンピック 無観客開催決定
+event_date: 2021-07-08
+event_summary: >
+  新型コロナウイルスの感染拡大が続く中、2021年7月8日、政府・東京都・大会組織委員会
+  等の5者協議により、東京オリンピック・パラリンピック(2021年開催)の首都圏会場での
+  無観客開催が決定した。2013年の招致決定時に見込まれていたインバウンド・輸送特需は
+  実現しなかった。
+theme_ids: [M21]
+time_type: 予定日
+related:
+  - code: "9201"
+    company_name: 日本航空
+    stage: 1
+    viewpoint: 経済
+    why_related: 訪日客特需が消滅し、無観客開催決定後も航空需要は回復しなかった
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "4661"
+    company_name: オリエンタルランド
+    stage: 2
+    viewpoint: 投資家
+    why_related: 大会関連の集客効果が期待されたが、無観客開催で直接的な恩恵はなかった
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "3382"
+    company_name: セブン&アイ・ホールディングス
+    stage: 2
+    viewpoint: 投資家
+    why_related: インバウンド消費拡大が期待されたが、無観客開催で不発に終わった
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "9020"
+    company_name: 東日本旅客鉄道
+    stage: 2
+    viewpoint: 投資家
+    why_related: 観客輸送需要の増加が見込まれたが、無観客開催で限定的だった
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+notes: >
+  【失敗例】招致決定時(PC0017、2013年)に想定された「材料の大きさ」が、8年後の
+  新型コロナという別の大きな局面展開型ニュースによって大きく損なわれた事例。
+  想定期間が非常に長い予定日型シナリオでは、途中で前提が覆るリスクがあることを
+  示す教訓的な事例として記録する。
+sources:
+  - https://www.koho.metro.tokyo.lg.jp/diary/report/2021/07/13/01.html
+  - https://ja.wikipedia.org/wiki/2020%E5%B9%B4%E6%9D%B1%E4%BA%AC%E3%82%AA%E3%83%AA%E3%83%B3%E3%83%94%E3%83%83%E3%82%AF

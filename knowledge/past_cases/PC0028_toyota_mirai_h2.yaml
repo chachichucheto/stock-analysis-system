@@ -1,0 +1,56 @@
+case_id: PC0028
+title: トヨタ「MIRAI」発売・水素社会への期待
+event_date: 2014-12-15
+event_summary: >
+  2014年12月15日、トヨタ自動車は世界初の量産型燃料電池自動車(FCEV)「MIRAI」を
+  発売した。発売直後から約1000台の注文を受けるなど好調な滑り出しとなり、
+  「水素社会」の到来への期待から水素ステーション整備・水素関連部材メーカーの
+  株式が広く物色された。
+theme_ids: [P09]
+time_type: 単発
+related:
+  - code: "7203"
+    company_name: トヨタ自動車
+    stage: 1
+    viewpoint: 経済
+    why_related: 世界初の量産燃料電池車「MIRAI」の発売元
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "4188"
+    company_name: 三菱ケミカルグループ
+    stage: 2
+    viewpoint: 投資家
+    why_related: 高圧水素タンク用炭素繊維等、水素関連部材メーカーとしての連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+  - code: "5019"
+    company_name: 出光興産
+    stage: 2
+    viewpoint: 投資家
+    why_related: 水素ステーション整備への参画期待の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "6273"
+    company_name: SMC
+    stage: 2
+    viewpoint: 投資家
+    why_related: 水素関連バルブ・空気圧機器メーカーとしての連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+notes: >
+  【失敗/期待先行例】発売から10年以上が経過した現在も燃料電池車の普及は限定的で、
+  水素ステーション網の整備や量産効果によるコスト低下は当初期待されたペースより
+  大きく遅れている。「テーマの誕生」から実需の顕在化までの期間が非常に長い、
+  あるいは実現しなかった可能性がある事例として、生成AI(PC0008)やフィジカルAI
+  (PC0016)のような足の速いテーマと対比する目的で記録した。
+sources:
+  - https://www.sbbit.jp/article/cont1/28864
+  - https://ja.wikipedia.org/wiki/%E3%83%88%E3%83%A8%E3%82%BF%E3%83%BBMIRAI

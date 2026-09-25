@@ -1,0 +1,55 @@
+case_id: PC0012
+title: Facebookの「Meta」への社名変更・メタバース相場
+event_date: 2021-10-28
+event_summary: >
+  2021年10月28日、米Facebook社はオンラインカンファレンス「Connect 2021」で社名を
+  「Meta」に変更すると発表し、マーク・ザッカーバーグCEOは「メタバースファースト」の
+  方針を打ち出した。日本株でもVR・ゲーム・IP関連の「メタバース関連株」が急騰したが、
+  その後1〜2年でブームは沈静化した。
+theme_ids: []
+time_type: 単発
+related:
+  - code: "3656"
+    company_name: KLab
+    stage: 2
+    viewpoint: 投資家
+    why_related: メタバース関連銘柄として物色されたが、その後の材料の息切れとともに失速した
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+  - code: "3903"
+    company_name: gumi
+    stage: 2
+    viewpoint: 投資家
+    why_related: 同上。メタバース・VR関連銘柄として一時物色された
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+  - code: "7832"
+    company_name: バンダイナムコホールディングス
+    stage: 2
+    viewpoint: 投資家
+    why_related: 保有IPを活用したメタバース事業参入への期待の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "9697"
+    company_name: カプコン
+    stage: 2
+    viewpoint: 投資家
+    why_related: VR・メタバース関連ゲーム開発への期待の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+notes: >
+  【失敗例】メタバースは「新テーマ候補」として大きく物色されたが、`THEMES.md`にも
+  正式なテーマとして定着しておらず(該当IDなし)、2022年以降は多くの関連銘柄で
+  材料が続かなかった。大きな海外ニュース(社名変更)がテーマの誕生につながらなかった
+  代表例として記録する。THEMES.md に該当する ID がないため theme_ids は空とした。
+sources:
+  - https://www.nikkei.com/article/DGXZQOGN258L20V21C21A0000000/
+  - https://www.itmedia.co.jp/news/articles/2110/29/news076.html

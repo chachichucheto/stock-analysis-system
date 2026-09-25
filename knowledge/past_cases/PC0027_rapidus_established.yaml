@@ -1,0 +1,63 @@
+case_id: PC0027
+title: 次世代半導体新会社ラピダス設立発表
+event_date: 2022-11-11
+event_summary: >
+  2022年11月11日、次世代半導体の国産化を目指す新会社「Rapidus(ラピダス)」の設立が
+  発表された。トヨタ自動車・NTT・ソニーグループなど国内企業8社が出資し、政府も
+  700億円の助成を表明。2027年の2nmロジック半導体の量産技術確立を目指すとされ、
+  日本の半導体復権の象徴的なニュースとして半導体関連株が広く物色された。
+theme_ids: [P01]
+time_type: 単発
+related:
+  - code: "7203"
+    company_name: トヨタ自動車
+    stage: 1
+    viewpoint: 経済
+    why_related: ラピダスへの出資企業の一角
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "9432"
+    company_name: 日本電信電話(NTT)
+    stage: 1
+    viewpoint: 経済
+    why_related: 同上。ラピダスへの出資企業の一角
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "6758"
+    company_name: ソニーグループ
+    stage: 1
+    viewpoint: 経済
+    why_related: 同上。ラピダスへの出資企業の一角
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "8035"
+    company_name: 東京エレクトロン
+    stage: 2
+    viewpoint: 投資家
+    why_related: 国内先端半導体製造の裾野拡大による半導体製造装置需要拡大の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "3436"
+    company_name: SUMCO
+    stage: 2
+    viewpoint: 投資家
+    why_related: シリコンウエハー需要拡大の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+notes: >
+  ラピダス自体は非上場のため、直接の投資対象は出資企業や周辺の半導体製造装置・
+  材料メーカーとなる。TSMC熊本工場開所(PC0029)と並び、「半導体国策」テーマ
+  (戦略17分野P01)の中核イベントとして比較できる。
+sources:
+  - https://www.nikkei.com/article/DGXZQOUC111LO0R11C22A1000000/
+  - https://www.nikkei.com/article/DGXZQOUC114IK0R11C22A1000000/

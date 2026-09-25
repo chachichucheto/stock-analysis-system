@@ -1,0 +1,56 @@
+case_id: PC0013
+title: 北朝鮮弾道ミサイル発射・Jアラート発令
+event_date: 2022-10-04
+event_summary: >
+  2022年10月4日朝、北朝鮮が発射した弾道ミサイルが日本上空を通過し、東北地方などに
+  Jアラート(全国瞬時警報システム)が発令された。防衛関連株が一時物色されたが、
+  反応は小幅・短時間にとどまった。
+theme_ids: [P15, F04]
+time_type: 単発
+related:
+  - code: "7011"
+    company_name: 三菱重工業
+    stage: 1
+    viewpoint: 経済
+    why_related: 防衛装備品の中核企業として直接的な連想先
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "7012"
+    company_name: 川崎重工業
+    stage: 1
+    viewpoint: 経済
+    why_related: 防衛装備(航空機・艦艇)を手がける企業としての連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "6301"
+    company_name: コマツ
+    stage: 2
+    viewpoint: 投資家
+    why_related: 防衛省向け特殊車両を手がけるとの連想で物色された
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+  - code: "6807"
+    company_name: 日本航空電子工業
+    stage: 2
+    viewpoint: 投資家
+    why_related: 防衛関連電子機器メーカーとしての連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+notes: >
+  【失敗例】北朝鮮のミサイル発射・Jアラート発令は2022年以降複数回発生しており、
+  繰り返されるたびに材料としての新規性(サプライズ度)が薄れ、防衛関連株の反応は
+  短時間・小幅にとどまりやすい。安保三文書閣議決定(PC0022)のような制度変更を伴う
+  ニュースと異なり、単発の発射報道だけでは持続的な上昇につながりにくいことを
+  示す事例として記録した。
+sources:
+  - https://www.mod.go.jp/j/press/news/2022/10/04b.html
+  - https://www.fdma.go.jp/publication/hakusho/r4/topics5/00013.html
+  - https://www.nikkei.com/article/DGXZQOUA042J60U2A001C2000000/

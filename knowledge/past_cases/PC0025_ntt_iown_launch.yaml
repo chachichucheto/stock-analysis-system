@@ -1,0 +1,56 @@
+case_id: PC0025
+title: NTT IOWN商用サービス開始(光電融合テーマの起点)
+event_date: 2023-03-16
+event_summary: >
+  2023年3月16日、NTT東日本・西日本は次世代通信基盤構想「IOWN」の最初の商用サービス
+  「APN IOWN 1.0」の提供を開始した。光の波長を端から端まで使い、従来比200倍の
+  低遅延・最大100Gbpsの帯域を実現するとされ、電力を光で置き換える「光電融合」技術が
+  新たな投資テーマとして注目されるきっかけとなった。
+theme_ids: [M02, P16]
+time_type: 単発
+related:
+  - code: "9432"
+    company_name: 日本電信電話(NTT)
+    stage: 1
+    viewpoint: 経済
+    why_related: IOWN構想を主導する当事会社
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "5801"
+    company_name: 古河電気工業
+    stage: 1
+    viewpoint: 経済
+    why_related: 光ファイバー・光デバイスの主要サプライヤーとしての直接的な連想先
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "6976"
+    company_name: 太陽誘電
+    stage: 2
+    viewpoint: 投資家
+    why_related: 光関連部品・電子部品メーカーとしての連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+  - code: "6807"
+    company_name: 日本航空電子工業
+    stage: 2
+    viewpoint: 投資家
+    why_related: 光コネクタ関連製品を手がけるメーカーとしての連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+notes: >
+  「光電融合」はこの2023年のサービス開始以降、生成AI・データセンターの消費電力
+  問題と結び付けられて2024年以降さらに注目が高まったテーマである。次世代の
+  光電融合スイッチの商用化は2026年に計画されており、テーマの温度が段階的に
+  上がってきた事例として、他の生成AI関連事例(PC0008、PC0027)と合わせて参照する
+  とよい。
+sources:
+  - https://ascii.jp/elem/000/004/116/4116745/
+  - https://news.isotop.jp/archives/7713

@@ -1,0 +1,53 @@
+case_id: PC0015
+title: 円建てステーブルコイン「JPYC」発行開始
+event_date: 2025-10-27
+event_summary: >
+  フィンテック企業JPYC(東京・千代田)は2025年10月27日、日本円と1対1で交換できる
+  ステーブルコイン「JPYC」の発行を専用プラットフォーム「JPYC EX」で開始した。
+  日本円と資金決済法に基づく国内初の円建てステーブルコインとされ、2025年は
+  「ステーブルコイン元年」と位置づけられた。
+theme_ids: [M25]
+time_type: 単発
+related:
+  - code: "9449"
+    company_name: GMOインターネットグループ
+    stage: 1
+    viewpoint: 経済
+    why_related: グループ会社がステーブルコイン発行事業(GMO-Z.com Trust等)を手がけており直接的な連想先
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "8698"
+    company_name: マネックスグループ
+    stage: 1
+    viewpoint: 経済
+    why_related: 傘下の暗号資産取引所コインチェックを通じたステーブルコイン普及の直接的な受益者
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "8473"
+    company_name: SBIホールディングス
+    stage: 1
+    viewpoint: 経済
+    why_related: 暗号資産・ステーブルコイン関連事業に積極的な金融グループとしての連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "8306"
+    company_name: 三菱UFJフィナンシャル・グループ
+    stage: 2
+    viewpoint: 投資家
+    why_related: 傘下信託銀行が推進するステーブルコイン基盤「Progmat」との連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+notes: >
+  発行開始は2025年10月27日と確認できたが、それ以前(2025年前半)から法整備・実証実験の
+  報道が続いており、市場の織り込みがどこまで進んでいたかは要確認。
+sources:
+  - https://www.watch.impress.co.jp/docs/news/2058390.html
+  - https://prtimes.jp/main/html/rd/p/000000283.000054018.html

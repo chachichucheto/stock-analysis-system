@@ -1,0 +1,47 @@
+case_id: PC0010
+title: 村上ファンド系によるコスモエネルギーHD大量保有・攻防
+event_date: 2023-01-06
+event_summary: >
+  旧村上ファンド系(シティインデックスイレブンス等)は2022年4月にコスモエネルギー
+  ホールディングス株の5%超保有が判明していたが、2023年1月6日、村上氏側は大量保有
+  報告書ベースで保有比率を20%以上まで引き上げる意向を一方的に宣言した。コスモ側は
+  対抗措置(買収防衛策)を導入し、2023年を通じて経営陣との攻防が続いた。
+theme_ids: [M17, F07]
+time_type: 単発
+related:
+  - code: "5021"
+    company_name: コスモエネルギーホールディングス
+    stage: 1
+    viewpoint: 投資家
+    why_related: 当事会社。アクティビストによる買い増しと買収防衛策導入の思惑で株価が乱高下した
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "5019"
+    company_name: 出光興産
+    stage: 2
+    viewpoint: 投資家
+    why_related: 同業他社への資本効率改善・株主還元強化期待の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+  - code: "5020"
+    company_name: ENEOSホールディングス
+    stage: 2
+    viewpoint: 投資家
+    why_related: 同業他社へのアクティビスト思惑・株主還元強化期待の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+notes: >
+  大量保有報告書の提出・宣言そのものが材料となり続けた息の長い攻防で、事実関係の
+  節目(2022年4月の5%超保有判明、2023年1月6日の20%以上宣言、2023年4月14日の
+  変更報告書で20.01%保有確定)が複数ある。ここでは市場の思惑が最も強く動いた
+  2023年1月6日の宣言を起点とした。
+sources:
+  - https://kabushiki.jp/news/518874
+  - https://www.cosmo-energy.co.jp/content/dam/corp/jp/ja/news/2023/03/23-3/pdf/230323jp_03.pdf
+  - https://note.com/sgbc_3588/n/n1d13ee9deb71

@@ -1,0 +1,58 @@
+case_id: PC0006
+title: イスラエル・ハマス紛争(中東情勢緊迫化)
+event_date: 2023-10-07
+event_summary: >
+  2023年10月7日早朝、ガザ地区を実効支配するハマスの軍事部門がイスラエルに対し大規模な
+  奇襲攻撃(「アクサーの氾濫」作戦)を実施し、ロケット弾攻撃と越境攻撃を行った。イスラエル
+  はガザ地区への空爆で報復し、中東情勢が緊迫化。原油価格や金価格が上昇した。
+theme_ids: [E03, G03, M13]
+time_type: 局面展開
+phases:
+  - name: 開戦・原油急伸
+    until: 2023-10-31
+  - name: 波及懸念(ホルムズ海峡・紅海封鎖)
+    until: 2024-06-30
+related:
+  - code: "1605"
+    company_name: INPEX
+    stage: 1
+    viewpoint: 経済
+    why_related: 中東情勢緊迫化による原油価格上昇の直接的な受益者
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "5713"
+    company_name: 住友金属鉱山
+    stage: 2
+    viewpoint: 投資家
+    why_related: 地政学リスクの高まりによる金価格上昇の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "9101"
+    company_name: 日本郵船
+    stage: 2
+    viewpoint: 経済
+    why_related: 紅海での商船攻撃を受けた喜望峰迂回による海運需給ひっ迫の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "7011"
+    company_name: 三菱重工業
+    stage: 2
+    viewpoint: 投資家
+    why_related: 防衛関連の中心企業としての連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+notes: >
+  ウクライナ侵攻(PC0005)と同系統のテーマ(資源・防衛・金)が繰り返し反応するかを比べる
+  ための比較事例として登録した。紅海封鎖による海運への影響は、開戦から数か月遅れて
+  顕在化した「時間差」の可能性がある点に注目。
+sources:
+  - https://ja.wikipedia.org/wiki/2023%E5%B9%B4%E3%83%8F%E3%83%9E%E3%82%B9%E3%81%AB%E3%82%88%E3%82%8B%E3%82%A4%E3%82%B9%E3%83%A9%E3%82%A8%E3%83%AB%E6%94%BB%E6%92%83
+  - https://vdata.nikkei.com/newsgraphics/conflict-israel-and-hamas/

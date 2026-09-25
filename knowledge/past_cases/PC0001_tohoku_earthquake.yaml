@@ -1,0 +1,79 @@
+case_id: PC0001
+title: 東日本大震災
+event_date: 2011-03-11
+event_summary: >
+  2011年3月11日14時46分、三陸沖を震源とするM9.0の巨大地震が発生(気象庁名称:平成23年
+  東北地方太平洋沖地震)。宮城県栗原市で震度7を観測し、巨大津波により東北地方沿岸部に
+  甚大な被害が出た。東京電力福島第一原子力発電所では炉心溶融・水素爆発が発生し、原子力
+  災害に発展した。
+theme_ids: [E01, P10, P09]
+time_type: 局面展開
+phases:
+  - name: パニック(全面安・原発事故)
+    until: 2011-03-15
+  - name: 冷静化・代替生産
+    until: 2011-04-30
+  - name: 復興需要
+    until: 2011-12-31
+related:
+  - code: "1812"
+    company_name: 鹿島建設
+    stage: 1
+    viewpoint: 経済
+    why_related: 震災復興の公共工事・インフラ復旧を担う大手ゼネコン
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "1801"
+    company_name: 大成建設
+    stage: 1
+    viewpoint: 経済
+    why_related: 同上。大手ゼネコンとして復興工事の受注が期待された
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "9501"
+    company_name: 東京電力ホールディングス
+    stage: 1
+    viewpoint: 両方
+    why_related: 震源地に近い福島第一原子力発電所の事故により経営危機に陥り急落した(上がらなかった代表例)
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "6504"
+    company_name: 富士電機
+    stage: 2
+    viewpoint: 投資家
+    why_related: 非常用発電機・電力設備メーカーとして計画停電・節電対策の連想で物色された
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+  - code: "1928"
+    company_name: 積水ハウス
+    stage: 2
+    viewpoint: 投資家
+    why_related: 仮設住宅・戸建て建替え需要の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "6301"
+    company_name: コマツ
+    stage: 2
+    viewpoint: 経済
+    why_related: 瓦礫撤去・復旧工事向け建設機械需要の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+notes: >
+  値動きはPythonが計算する(このファイルでは未計算)。東京電力は震災に伴う原発事故で
+  逆に急落した代表例であり、「大災害=関連銘柄は上がる」という単純な連想が必ずしも
+  成り立たないことを示す事例として記録した。
+sources:
+  - https://ja.wikipedia.org/wiki/%E6%9D%B1%E6%97%A5%E6%9C%AC%E5%A4%A7%E9%9C%87%E7%81%BD
+  - https://ja.wikipedia.org/wiki/%E6%9D%B1%E5%8C%97%E5%9C%B0%E6%96%B9%E5%A4%AA%E5%B9%B3%E6%B4%8B%E6%B2%96%E5%9C%B0%E9%9C%87

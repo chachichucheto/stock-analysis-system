@@ -1,0 +1,62 @@
+case_id: PC0008
+title: ChatGPT公開
+event_date: 2022-11-30
+event_summary: >
+  2022年11月30日、米OpenAIが対話型AI「ChatGPT」(GPT-3.5ベース)を誰でも無料で使える
+  形で公開した。リリースから5日で利用者100万人を突破するなど急速に普及し、生成AI
+  ブームの起点となった。日本株でも半導体・データセンター関連が大きく物色された。
+theme_ids: [P01]
+time_type: 単発
+related:
+  - code: "8035"
+    company_name: 東京エレクトロン
+    stage: 2
+    viewpoint: 投資家
+    why_related: 生成AIブームによる半導体需要拡大・設備投資増加の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "6920"
+    company_name: レーザーテック
+    stage: 2
+    viewpoint: 投資家
+    why_related: 半導体製造装置(EUV関連検査装置)メーカーとしての連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "9432"
+    company_name: 日本電信電話(NTT)
+    stage: 2
+    viewpoint: 投資家
+    why_related: データセンター・生成AI基盤整備の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "9984"
+    company_name: ソフトバンクグループ
+    stage: 1
+    viewpoint: 投資家
+    why_related: 半導体設計会社Armを傘下に持ち、生成AIブームの直接的な連想先とされた
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "3778"
+    company_name: さくらインターネット
+    stage: 2
+    viewpoint: 投資家
+    why_related: 国産クラウド・GPUインフラ需要拡大の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: check
+notes: >
+  「単発型」のニュースだが、その後半年以上にわたり生成AIというテーマ自体が
+  拡大し続けた点で、単発の材料がテーマの誕生につながった代表例。半導体関連の
+  本格的な上昇は公開から数か月後に本格化しており、時間差の検証に使える。
+sources:
+  - https://weel.co.jp/media/innovator/openai-products-matome/
+  - https://taskhub.jp/useful/chatgpt-2022%E5%B9%B411%E6%9C%88/

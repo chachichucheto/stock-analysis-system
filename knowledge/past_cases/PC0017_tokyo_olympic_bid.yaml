@@ -1,0 +1,55 @@
+case_id: PC0017
+title: 東京オリンピック招致決定
+event_date: 2013-09-08
+event_summary: >
+  2013年9月7日(現地時間、日本時間8日)、アルゼンチン・ブエノスアイレスで開催された
+  第125次IOC総会において、2020年夏季オリンピック・パラリンピックの開催都市に
+  東京が決定した。1964年以来56年ぶりの開催で、新国立競技場の建設や選手村整備、
+  インバウンド需要の拡大期待から建設・不動産・観光関連株が大きく買われた。
+theme_ids: [M21]
+time_type: 予定日
+related:
+  - code: "1802"
+    company_name: 大成建設
+    stage: 1
+    viewpoint: 経済
+    why_related: 新国立競技場をはじめとする大会関連インフラ工事の中心的建設会社
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "1928"
+    company_name: 積水ハウス
+    stage: 1
+    viewpoint: 経済
+    why_related: 選手村跡地のマンション開発などへの参画期待
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "9020"
+    company_name: 東日本旅客鉄道
+    stage: 2
+    viewpoint: 投資家
+    why_related: 大会に伴う観光・輸送需要拡大の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+  - code: "3382"
+    company_name: セブン&アイ・ホールディングス
+    stage: 2
+    viewpoint: 投資家
+    why_related: 訪日客増加によるインバウンド消費拡大の連想
+    max_excess_20d: null
+    moved: null
+    days_to_move: null
+    code_confidence: high
+notes: >
+  招致決定(2013年)から開催予定日(当初2020年7月)までの期間に、材料の鮮度がどう
+  減衰したか、また新国立競技場のデザイン見直し(2015年)などの下方修正イベントが
+  途中にあったことも合わせて振り返る価値がある。実際の開催は新型コロナの影響で
+  2021年に延期・無観客開催となった(PC0018参照)。
+sources:
+  - https://www.nikkei.com/article/DGXNASDG07047_Y3A900C1000000/
+  - https://ja.wikipedia.org/wiki/2020%E5%B9%B4%E5%A4%8F%E5%AD%A3%E3%82%AA%E3%83%AA%E3%83%B3%E3%83%94%E3%83%83%E3%82%AF%E3%81%AE%E9%96%8B%E5%82%AC%E5%9C%B0%E9%81%B8%E8%80%83
