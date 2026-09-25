@@ -3,7 +3,7 @@
 
 paths:
   data_dir: data                 # DB・生データ・記録・レポートの置き場所
-  backup_dir: ""                 # 追記専用の記録の複製先(例: C:/Users/you/OneDrive/assoc_backup)。空なら複製しない
+  backup_dir: ""                 # 追記専用の記録の複製先。OneDrive のフォルダがおすすめ(docs/HANDOFF.md「バックアップ」)。空なら複製しない
 
 prices:
   # 既存の株価DBの読み方。S1 の確認結果に合わせて変更する(docs/DESIGN.md §11)

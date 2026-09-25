@@ -32,7 +32,7 @@ class Thresholds:
     priced_in_near: float = 0.70         # 売りのサイン:完了が近い
     ending_soon_days: int = 2            # 売りのサイン:想定期間の残り
     not_started_days: int = 60           # 待機のまま60営業日で終了
-    min_turnover_yen: float = 1e8        # 流動性の下限(未決。DESIGN §12)
+    min_turnover_yen: float = 3e8        # 流動性の下限:20日平均の売買代金3億円(2026-09-25 決定。DECISIONS D33)
     min_price_yen: float = 100.0         # 極端な低位株
     surged_return: float = 0.50          # 直近20営業日で +50%超は急騰済み
     surged_days: int = 20

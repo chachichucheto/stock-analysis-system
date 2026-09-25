@@ -13,7 +13,7 @@ def _ok_candidate(**overrides) -> CandidateInput:
         company_name="テスト株式会社",
         confidence=0.10,
         side="long",
-        avg_turnover_yen=2e8,
+        avg_turnover_yen=THRESHOLDS.min_turnover_yen * 2,
         price=1000.0,
         return_20d=0.05,
         evidence_all_low_tier=False,

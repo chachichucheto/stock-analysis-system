@@ -10,7 +10,7 @@ TDnet(適時開示)は約1か月で消えるので、収集だけ先に始めま
 
 ```powershell
 # 1. 取り込み(置きたいフォルダで)
-git clone -b claude/winner-chronology-handoff-b0ou3r https://github.com/chachichucheto/stock-analysis-system.git
+git clone -b news-association-model https://github.com/chachichucheto/stock-analysis-system.git
 cd stock-analysis-system
 
 # 2. セットアップ(仮想環境・ライブラリ・設定ファイル)
@@ -48,6 +48,27 @@ powershell -ExecutionPolicy Bypass -File scripts\windows\register_tasks.ps1 -Col
 
 ---
 
+## バックアップ(無料)
+
+守るべきものは `data\records\`(追記専用の記録)だけです。コードと文書は GitHub にあり、ニュースや株価はスクリプトで取り直せますが、**記録は作り直せません**。容量は1年でも数十MB程度の見込みなので、無料の範囲で十分です。
+
+**おすすめ:OneDrive(Windows に標準で入っていて、5GB まで無料)**
+
+1. エクスプローラーの左側に「OneDrive」があるか確認する。無ければ、スタートメニューから「OneDrive」を起動し、Microsoft アカウント(Windows のサインインに使っているもの。無ければ無料で作れる)でサインインする。
+2. OneDrive の中に `assoc_backup` というフォルダを作る(例:`C:\Users\あなたの名前\OneDrive\assoc_backup`)。
+3. `config\config.yaml` の `paths.backup_dir` にそのフォルダを書く:
+   ```yaml
+   paths:
+     backup_dir: C:/Users/あなたの名前/OneDrive/assoc_backup
+   ```
+4. 動作確認:`.\.venv\Scripts\python.exe -m assoc backup`
+
+毎日23:30に自動で複製されます(最新の複製 `records_latest` と、直近14日分の日付付きの複製)。OneDrive がクラウドに同期するので、PC が壊れても記録は残ります。
+
+**代わりの方法**:Google ドライブ(15GB まで無料。「パソコン版ドライブ」を入れると同じようにフォルダとして使える)でも、手順は同じです。
+
+---
+
 ## 1. 初回だけ行うこと
 
 ### 1.1 必要なもの
@@ -61,7 +82,7 @@ powershell -ExecutionPolicy Bypass -File scripts\windows\register_tasks.ps1 -Col
 PowerShell を開き、置きたいフォルダで実行します。
 
 ```powershell
-git clone -b claude/winner-chronology-handoff-b0ou3r https://github.com/chachichucheto/stock-analysis-system.git
+git clone -b news-association-model https://github.com/chachichucheto/stock-analysis-system.git
 cd stock-analysis-system
 ```
 

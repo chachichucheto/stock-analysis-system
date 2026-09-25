@@ -329,13 +329,18 @@ class App:
             problems += self.store.verify(kind)
         return problems
 
-    def backup(self) -> Path | None:
-        target = self.cfg.path("backup_dir")
-        if not str(target) or str(target) == ".":
+    def backup(self, keep_days: int = 14) -> Path | None:
+        """追記専用の記録を複製する。最新の複製(records_latest)と、日付付きの複製を直近 keep_days 日分残す。"""
+        if not self.cfg.raw.get("paths", {}).get("backup_dir"):
             return None
-        dest = Path(target) / f"records_{self.today().isoformat()}"
-        shutil.copytree(self.store.dir, dest, dirs_exist_ok=True)
-        return dest
+        target = self.cfg.path("backup_dir")
+        latest = target / "records_latest"
+        shutil.copytree(self.store.dir, latest, dirs_exist_ok=True)
+        dated = target / f"records_{self.today().isoformat()}"
+        shutil.copytree(self.store.dir, dated, dirs_exist_ok=True)
+        for old in sorted(target.glob("records_20*"))[:-keep_days]:
+            shutil.rmtree(old, ignore_errors=True)       # 古い日付の複製だけを消す(最新の複製は残る)
+        return latest
 
 
 def _accepts_con(fn) -> bool:
