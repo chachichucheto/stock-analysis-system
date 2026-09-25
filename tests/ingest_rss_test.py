@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from assoc.ingest.rss import parse_feed
-from tests.ingest_helpers import fixture_bytes
+from ingest_helpers import fixture_bytes
 
 
 def test_parse_feed_extracts_items():

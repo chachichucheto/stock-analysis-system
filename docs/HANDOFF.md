@@ -4,6 +4,34 @@
 
 ---
 
+## 0. 明日(最初の日)にやること:収集だけ先に始める
+
+TDnet(適時開示)は約1か月で消えるので、収集だけ先に始めます。**所要10分程度**です。PowerShell で順に実行してください。
+
+```powershell
+# 1. 取り込み(置きたいフォルダで)
+git clone -b claude/winner-chronology-handoff-b0ou3r https://github.com/chachichucheto/stock-analysis-system.git
+cd stock-analysis-system
+
+# 2. セットアップ(仮想環境・ライブラリ・設定ファイル)
+powershell -ExecutionPolicy Bypass -File scripts\windows\setup.ps1
+
+# 3. 収集を1回動かしてみる
+.\.venv\Scripts\python.exe -m assoc collect
+
+# 4. TDnet に残っている過去1か月分をまとめて取り込む(10分ほどかかる)
+.\.venv\Scripts\python.exe -m assoc backfill-tdnet
+
+# 5. 収集の自動実行だけを登録する
+powershell -ExecutionPolicy Bypass -File scripts\windows\register_tasks.ps1 -CollectOnly
+```
+
+- 手順2の最後の `doctor` で「株価DB ✗」と出ますが、この時点では問題ありません(株価DBの設定は後日)。
+- 手順3・4の結果で、件数が 0 の収集器や、エラーの出た収集器があれば、ローカルの Claude Code に「`python -m assoc collect` の結果で失敗した収集器を直して」と頼んでください。各収集器のファイルの冒頭に、確認すべき点が書いてあります。
+- 登録したのは次の3つです:1時間ごとの収集(ニュース・TDnet)、毎日17:30の収集(EDINET・上場銘柄一覧など)、23:30の記録の複製。
+
+---
+
 ## 1. 初回だけ行うこと
 
 ### 1.1 必要なもの
@@ -59,7 +87,8 @@ powershell -ExecutionPolicy Bypass -File scripts\windows\register_tasks.ps1
 
 | タスク | 時刻 | 内容 |
 |---|---|---|
-| assoc_collect | 1時間ごと | ニュース・TDnet などの収集 |
+| assoc_collect | 1時間ごと | ニュース・Google News・TDnet の収集 |
+| assoc_daily | 17:30 | EDINET・上場銘柄一覧・決算予定・GDELT・Wikipedia の収集 |
 | assoc_prepare | 18:00 | イベント化・足切り・入力パックの作成 |
 | assoc_morning | 7:30 | 米国の1段目の反応の確認 |
 | assoc_nextday | 16:00 | 等級の確定・状態の更新・売りのサイン |
@@ -114,4 +143,4 @@ git pull
 | 日付 | 内容 | ローカルで必要な作業 |
 |---|---|---|
 | 2026-09-25 | 設計書一式(CONCEPT / DESIGN / DECISIONS / THEMES / ANALYSIS_PLAN) | なし |
-| 2026-09-25 | 実装の土台、確定処理、指示文とコマンド、Windows 用スクリプト(作業中) | §1 の初回セットアップ |
+| 2026-09-25 | 実装一式(収集・足切り・入力パック・確定・ランキング・レポート・翌日の処理・月次の集計)、通し試験 | §0 の手順(収集だけ先に開始) |

@@ -23,6 +23,27 @@ collect:
     - name: NHK 経済
       url: https://www.nhk.or.jp/rss/news/cat5.xml
       tier: 2
-  google_news_queries: []        # 注目度の計測用。テーマ語やイベントの語は自動で足される
+    - name: NHK 国際
+      url: https://www.nhk.or.jp/rss/news/cat6.xml
+      tier: 2
+    - name: NHK 政治
+      url: https://www.nhk.or.jp/rss/news/cat4.xml
+      tier: 2
+    - name: Yahoo!ニュース 経済          # 各社の記事の集約。媒体数を数える材料にもなる(要確認:URL)
+      url: https://news.yahoo.co.jp/rss/topics/business.xml
+      tier: 2
+    - name: Yahoo!ニュース 国内
+      url: https://news.yahoo.co.jp/rss/topics/domestic.xml
+      tier: 2
+    - name: Yahoo!ニュース IT
+      url: https://news.yahoo.co.jp/rss/topics/it.xml
+      tier: 2
+    - name: Google ニュース トップ
+      url: https://news.google.com/rss?hl=ja&gl=JP&ceid=JP:ja
+      tier: 2
+  google_news_queries: []        # 注目度の計測用のキーワード
+  # JPX の上場銘柄一覧(Excel)。URL が変わることがあるので、取れないときは JPX のサイトで確認する
+  jpx_universe_url: https://www.jpx.co.jp/markets/statistics-equities/misc/tvdivq0000001vg2-att/data_j.xls
+  earnings_schedule_url: ""      # 決算発表予定日の一覧(配布 URL は S1 で確認する)
   request_interval_sec: 1.0      # 取得の間隔(相手先に負荷をかけない)
   user_agent: "assoc-research/0.1 (personal use)"

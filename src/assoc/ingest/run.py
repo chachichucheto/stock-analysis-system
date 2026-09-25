@@ -62,8 +62,11 @@ def consecutive_failures(con, source: str, n: int = 3) -> bool:
 
     記録が n 回に満たない場合は False とする(判定に十分な材料がないため)。
     """
+    # fetched_at は秒単位に丸めているため、同一秒の記録が複数あっても順序が安定するよう
+    # rowid(挿入順)を副次キーにする。
     rows = con.execute(
-        "SELECT ok FROM fetch_log WHERE source = ? ORDER BY fetched_at DESC LIMIT ?", [source, n]
+        "SELECT ok FROM fetch_log WHERE source = ? ORDER BY fetched_at DESC, rowid DESC LIMIT ?",
+        [source, n],
     ).fetchall()
     if len(rows) < n:
         return False

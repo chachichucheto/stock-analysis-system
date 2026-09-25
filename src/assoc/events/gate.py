@@ -28,6 +28,10 @@ STRONG_DISCLOSURE_KEYWORDS = (
 )
 
 
+# 運用開始直後は比べる履歴が無いので、履歴がこの件数に満たない間は注目度(媒体数)の順に上限件数まで通す
+COLD_START_MIN_HISTORY = 20
+
+
 @dataclass
 class GateInput:
     """足切りの対象1件(events/cluster.py の Event に、注目度の値を足したもの)。"""
@@ -68,12 +72,10 @@ def composite_attention(
     スケールが大きく異なる指標(媒体数は数件、Wikipedia は数千閲覧)をそのまま足すと
     Wikipedia が支配的になるため、百分位に揃えてから合成する。
     """
-    parts = [
-        percentile_rank(event.media_count, media_history),
-        percentile_rank(event.gdelt, gdelt_history),
-        percentile_rank(event.wiki, wiki_history),
-    ]
-    return sum(parts) / len(parts)
+    # まだ計測していない指標(値も履歴もすべて0)は合成に含めない。含めると 0 が「上位」扱いになる
+    pairs = [(event.media_count, media_history), (event.gdelt, gdelt_history), (event.wiki, wiki_history)]
+    parts = [percentile_rank(v, h) for v, h in pairs if v > 0 or any(x > 0 for x in h)]
+    return sum(parts) / len(parts) if parts else 0.0
 
 
 def matches_active_scenarios(
@@ -132,10 +134,11 @@ def gate_events(
                 attention=attention, forced_in=False,
             )
             continue
-        meets_attention = score >= thresholds.gate_attention_pct
+        cold_start = len(media_history) < COLD_START_MIN_HISTORY
+        meets_attention = score >= thresholds.gate_attention_pct or (cold_start and e.media_count > 0)
         meets_growth = growth_pct >= thresholds.gate_attention_pct
         meets_strong = is_strong_disclosure(e.title) or is_strong_disclosure(e.disclosure_type)
-        if not (meets_attention or meets_growth or meets_strong):
+        if not (meets_attention or meets_growth or meets_strong or forced):
             results[e.event_id] = GateResult(
                 event_id=e.event_id, passed=False,
                 reason="注目度・開示の種類のいずれの条件も満たさない", attention=attention, forced_in=False,
@@ -143,8 +146,9 @@ def gate_events(
             continue
         if forced:
             reason = _condition_reason(meets_attention, meets_growth, meets_strong)
+            reason = "進行中シナリオに関係" if reason == "該当なし" else f"{reason}(進行中シナリオの別枠)"
             results[e.event_id] = GateResult(
-                event_id=e.event_id, passed=True, reason=f"{reason}(進行中シナリオの別枠)",
+                event_id=e.event_id, passed=True, reason=reason,
                 attention=attention, forced_in=True,
             )
         else:
@@ -156,7 +160,7 @@ def gate_events(
             )
 
     # 別枠(forced_in)以外は、注目度の合成スコアの順に上限件数まで。超えた分は理由を書き換えて落とす。
-    passed_not_forced.sort(key=lambda t: t[1], reverse=True)
+    passed_not_forced.sort(key=lambda t: (t[1], t[0].media_count), reverse=True)
     for e, _score in passed_not_forced[thresholds.gate_max_events :]:
         prev = results[e.event_id]
         results[e.event_id] = GateResult(
