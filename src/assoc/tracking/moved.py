@@ -1,6 +1,7 @@
 """「動いた」の判定。docs/CONCEPT.md §1.2・§7、docs/DESIGN.md §6.8。
 
-本命に挙げた日(first_pick_date)の前日終値を起点に、最長
+本命に挙げた日(first_pick_date)の終値を起点に(レポートは引け後に出すので、
+その日の値動きは既に知っている。docs/ANALYSIS_PLAN.md §2)、翌営業日から最長
 min(想定期間, moved_max_days) 営業日のうちに TOPIX 超過が moved_excess 以上に
 なったかを判定する。動き出した日(初めて move_start_excess を超えた日)と、
 動くまでの営業日数も返す。
@@ -40,16 +41,18 @@ def check_moved(
 ) -> MovedResult:
     horizon_days = min(expected_days, thresholds.moved_max_days)
     end_date = add_business_days(first_pick_date, horizon_days)
+    # excess_return は start_date の前日終値を起点にするので、翌営業日を渡すと起点が first_pick_date の終値になる
+    start = add_business_days(first_pick_date, 1)
 
     candidate_dates = sorted(
-        d for d in prices["date"].tolist() if first_pick_date <= d <= end_date
+        d for d in prices["date"].tolist() if first_pick_date < d <= end_date
     )
 
     max_excess = 0.0
     moved = False
     moved_at: date | None = None
     for d in candidate_dates:
-        excess = excess_return(prices, topix, first_pick_date, d)
+        excess = excess_return(prices, topix, start, d)
         if excess > max_excess:
             max_excess = excess
         if moved_at is None and excess >= thresholds.move_start_excess:

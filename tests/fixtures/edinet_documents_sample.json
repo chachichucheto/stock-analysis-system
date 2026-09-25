@@ -1,0 +1,60 @@
+{
+  "metadata": {
+    "title": "提出書類一覧",
+    "parameter": {"date": "2026-09-25", "type": "2"},
+    "resultset": {"count": 3},
+    "processDateTime": "2026-09-25 18:00",
+    "status": "200",
+    "message": "OK"
+  },
+  "results": [
+    {
+      "seqNumber": 1,
+      "docID": "S100ABCD",
+      "edinetCode": "E00001",
+      "secCode": "13010",
+      "JCN": "1234567890123",
+      "filerName": "サンプル物産株式会社",
+      "docTypeCode": "350",
+      "periodStart": null,
+      "periodEnd": null,
+      "submitDateTime": "2026-09-25 15:10",
+      "docDescription": "大量保有報告書",
+      "withdrawalStatus": "0",
+      "docInfoEditStatus": "0",
+      "disclosureStatus": "0",
+      "xbrlFlag": "1",
+      "pdfFlag": "1",
+      "attachDocFlag": "0",
+      "englishDocFlag": "0",
+      "csvFlag": "0",
+      "legalStatus": "1"
+    },
+    {
+      "seqNumber": 2,
+      "docID": "S100ABCE",
+      "edinetCode": "E00002",
+      "secCode": null,
+      "JCN": "9876543210987",
+      "filerName": "個人投資家 山田太郎",
+      "docTypeCode": "360",
+      "submitDateTime": "2026-09-25 16:00",
+      "docDescription": "変更報告書",
+      "xbrlFlag": "0",
+      "pdfFlag": "1"
+    },
+    {
+      "seqNumber": 3,
+      "docID": "S100ABCF",
+      "edinetCode": "E00003",
+      "secCode": "67520",
+      "JCN": "1111122222333",
+      "filerName": "サンプル電機株式会社",
+      "docTypeCode": "120",
+      "submitDateTime": "2026-09-25 17:00",
+      "docDescription": "有価証券届出書の訂正届出書",
+      "xbrlFlag": "1",
+      "pdfFlag": "1"
+    }
+  ]
+}

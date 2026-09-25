@@ -73,3 +73,17 @@ def test_strengthening_does_not_extend_the_window():
 
     assert result.moved is False
 
+
+
+def test_rise_on_pick_day_itself_is_not_counted():
+    # レポートは引け後に出すので、本命に挙げた日の上昇は既に知っている。起点はその日の終値
+    days = business_days(date(2026, 9, 28), 5)
+    first_pick_date = days[1]
+    closes = [100, 115, 116, 117, 117]  # 挙げた日に +15%、その後はほぼ横ばい
+    stock = make_price_frame(days, closes)
+    topix = make_price_frame(days, [200] * 5)
+
+    result = check_moved(stock, topix, first_pick_date, expected_days=10, thresholds=THRESHOLDS)
+
+    assert result.moved is False
+    assert result.max_excess == pytest.approx(117 / 115 - 1)

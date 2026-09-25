@@ -1,0 +1,10 @@
+{
+  "items": [
+    {"project": "ja.wikipedia", "article": "半導体", "granularity": "daily",
+     "timestamp": "2026092300", "access": "all-access", "agent": "user", "views": 5000},
+    {"project": "ja.wikipedia", "article": "半導体", "granularity": "daily",
+     "timestamp": "2026092400", "access": "all-access", "agent": "user", "views": 5200},
+    {"project": "ja.wikipedia", "article": "半導体", "granularity": "daily",
+     "timestamp": "2026092500", "access": "all-access", "agent": "user", "views": 12000}
+  ]
+}
