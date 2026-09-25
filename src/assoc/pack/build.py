@@ -4,17 +4,17 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import asdict
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import yaml
 
 from assoc.config import REPO_ROOT
-from assoc.events.cluster import build_events_for_day
+from assoc.events.cluster import build_events_between, extract_entities
 from assoc.events.gate import GateInput, gate_events
 from assoc.state import latest_by, load_scenarios
-from assoc.timeutil import to_iso, utcnow
+from assoc.timeutil import JST, parse_iso, to_iso, utcnow
 
 if TYPE_CHECKING:
     from assoc.app import App
@@ -56,6 +56,16 @@ def _load_past_cases() -> list[dict[str, Any]]:
     return cases
 
 
+def _previous_pack_time(packs: Path, day: date) -> datetime | None:
+    earlier = sorted(p for p in packs.glob("pack_*.json") if p.stem[5:] < day.isoformat())
+    if not earlier:
+        return None
+    try:
+        return parse_iso(json.loads(earlier[-1].read_text(encoding="utf-8"))["generated_at"])
+    except (KeyError, ValueError):
+        return None
+
+
 def build_pack(app: "App", day: date) -> Path:
     packs = app.dir("packs")
     path = packs / f"pack_{day.isoformat()}.json"
@@ -65,9 +75,16 @@ def build_pack(app: "App", day: date) -> Path:
     scenarios = load_scenarios(app.store)
     active = [s for s in scenarios.values() if s.is_active]
     active_codes = {c["code"] for s in active for c in s.candidates}
-    active_keywords = {w for s in active for w in s.statement.replace("→", " ").split() if len(w) >= 2}
+    # 別枠の判定に使う語:候補の社名と、シナリオの文の固有表現
+    active_keywords = {c.get("master_name") or c["company_name"] for s in active for c in s.candidates}
+    active_keywords |= {w for s in active for w in extract_entities(s.statement) if len(w) >= 2}
 
-    events = build_events_for_day(app.con, day)
+    # 前回のパックを作った時刻から今回までに取得したものを対象にする(夜に取得したニュースも漏らさない)
+    now = utcnow()
+    day_start = datetime.combine(day, time.min, tzinfo=JST)
+    window_end = min(now, day_start + timedelta(days=1)) if day <= app.today() else day_start + timedelta(days=1)
+    window_start = _previous_pack_time(packs, day) or day_start
+    events = build_events_between(app.con, window_start, window_end)
     seen = {r["novelty_hash"] for r in app.store.read("event_gate") if r.get("novelty_hash") and r.get("date") != day.isoformat()}
     hist = _attention_history(app, day)
     inputs = [GateInput(event_id=e.event_id, title=e.title, novelty_hash=e.novelty_hash,
@@ -84,7 +101,7 @@ def build_pack(app: "App", day: date) -> Path:
     for r in results:
         ev = by_id[r.event_id]
         # 比べる履歴が足りない間は判定しない(None)。評価の側で等級から補う
-        attention_high = None if high_cut is None else ev.media_count >= high_cut
+        attention_high = None if high_cut is None else ev.media_count > high_cut
         app.store.append("event_gate", {"event_id": r.event_id, "date": day.isoformat(), "passed": r.passed,
                                         "reason": r.reason, "forced_in": r.forced_in, "attention": r.attention,
                                         "attention_high": attention_high, "novelty_hash": ev.novelty_hash,
@@ -93,7 +110,7 @@ def build_pack(app: "App", day: date) -> Path:
             urls = [row[0] for row in app.con.execute(
                 "SELECT url FROM news_item WHERE news_id IN (SELECT unnest(?)) "
                 "UNION ALL SELECT url FROM disclosure WHERE disclosure_id IN (SELECT unnest(?))",
-                [ev.news_ids, ev.news_ids]).fetchall()]
+                [ev.news_ids, ev.disclosure_ids]).fetchall()]
             pack_events.append({"event_id": ev.event_id, "title": ev.title, "urls": urls[:10],
                                 "first_observed_at": to_iso(ev.first_observed_at), "media_count": ev.media_count,
                                 "disclosure_type": ev.disclosure_type, "codes": ev.codes,
@@ -116,7 +133,8 @@ def build_pack(app: "App", day: date) -> Path:
     market = _market_state(app, codes, day)
 
     pack = {
-        "pack_version": PACK_VERSION, "date": day.isoformat(), "generated_at": to_iso(utcnow()), "mode": "通常",
+        "pack_version": PACK_VERSION, "date": day.isoformat(), "generated_at": to_iso(now), "mode": "通常",
+        "window": {"from": to_iso(window_start), "to": to_iso(window_end)},
         "limits": {"max_candidates_per_scenario": app.th.max_candidates_per_scenario,
                    "max_active_scenarios": app.th.max_active_scenarios},
         "events": pack_events,

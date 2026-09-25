@@ -45,7 +45,13 @@ class RecordStore:
                     break
                 pos -= 1
             f.seek(max(pos, 0))
-            last = json.loads(f.readline().decode("utf-8"))
+            line = f.readline().decode("utf-8", errors="replace")
+        try:
+            last = json.loads(line)
+        except json.JSONDecodeError:
+            # 自動では直さない(追記専用の原則)。人が確認できるよう、場所を示して止める
+            raise RuntimeError(f"記録 {path} の最終行が壊れています(書き込み中の電源断など)。"
+                               "最終行を確認し、バックアップと突き合わせてから直してください") from None
         return last["_seq"], last["_hash"]
 
     def append(self, kind: str, payload: dict[str, Any]) -> dict[str, Any]:

@@ -16,6 +16,7 @@ class Event:
     disclosure_type: str
     novelty_hash: str
     codes: list[str] = field(default_factory=list)  # 開示由来の銘柄コード(足切りの別枠判定に使う)
+    disclosure_ids: list[str] = field(default_factory=list)
 
 
 @dataclass

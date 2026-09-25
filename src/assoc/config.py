@@ -54,7 +54,7 @@ class Config:
 
     @property
     def data_dir(self) -> Path:
-        return self.path("data_dir") or REPO_ROOT / "data"
+        return self.path("data_dir") if self.raw.get("paths", {}).get("data_dir") else REPO_ROOT / "data"
 
     def section(self, name: str) -> dict[str, Any]:
         return self.raw.get(name, {}) or {}

@@ -46,7 +46,9 @@ def collect(
     if "gdelt" in targets:
         results["gdelt"] = safe_run(con, "gdelt", lambda: gdelt.fetch_gdelt(cfg, con, gdelt_keywords))
     if "wikipedia" in targets:
-        articles = wiki_articles or []
+        # 記事名は引数か、config の collect.wikipedia_articles(日本語版の記事名)から
+        articles = wiki_articles or [wikipedia.WikiArticle(title=t) for t in
+                                     (cfg.section("collect").get("wikipedia_articles") or [])]
         results["wikipedia"] = safe_run(con, "wikipedia", lambda: wikipedia.fetch_wikipedia(cfg, con, articles))
     if "universe" in targets:
         results["universe"] = safe_run(con, "jpx_universe", lambda: master_universe.fetch_universe(cfg, con))
@@ -75,5 +77,7 @@ def consecutive_failures(con, source: str, n: int = 3) -> bool:
 
 def sources_with_consecutive_failures(con, sources: list[str] | None = None, n: int = 3) -> list[str]:
     """3回続けて失敗している収集器の一覧(レポート冒頭の警告に使う)。"""
+    # fetch_log に記録される名前は、universe と calendar だけ収集器の名前と違う
+    logged = {"universe": "jpx_universe", "calendar": "earnings_schedule"}
     targets = sources if sources is not None else list(ALL_SOURCES)
-    return [s for s in targets if consecutive_failures(con, s, n)]
+    return [s for s in targets if consecutive_failures(con, logged.get(s, s), n)]

@@ -32,6 +32,22 @@ powershell -ExecutionPolicy Bypass -File scripts\windows\register_tasks.ps1 -Col
 
 ---
 
+## 既知の制約(2026-09-25 時点)
+
+| 項目 | 状態 | 対応 |
+|---|---|---|
+| 収集器 | 見本のデータでしか試していない(クラウドから外部に接続できないため) | §0 の手順3・4で件数とエラーを確認し、失敗した収集器をローカルの Claude Code に直してもらう |
+| 株価DB | 未接続。`doctor` で「株価DB ✗」と出る | S1 で既存の株価DBの形式を確認して `prices` を設定する |
+| `doctor` の Yahoo Finance | 「✗(401/429)」と出ることがある | 接続の確認用なので無視してよい |
+| 監理・整理ポスト | 取得元が未確認のため、除外条件が働かない(常に「通常」扱い) | 取得元が分かったら `src/assoc/master/universe.py` の `fetch_monitoring_posts` を実装する |
+| 決算発表の予定 | 配布 URL が未確認(`collect.earnings_schedule_url` が空) | S1 で URL を確認して設定する |
+| Wikipedia・GDELT | `config.yaml` の `wikipedia_articles`・`google_news_queries` に書いた語だけを収集する | 必要なら語を増やす |
+| 月次の「見逃し」の抽出 | 全銘柄の株価DBに接続するまで空 | 株価DBの接続後に実装する |
+| 夜の手順 | 0時を過ぎると翌日の扱いになる | 0時前に実行する(過ぎたら `--date` で前日を指定) |
+| ダッシュボード | `data\reports\dashboard.html`。収集・確定・レポート・翌日の処理のたびに自動で作り直す | ブラウザで開く(`python -m assoc dashboard --open`) |
+
+---
+
 ## 1. 初回だけ行うこと
 
 ### 1.1 必要なもの

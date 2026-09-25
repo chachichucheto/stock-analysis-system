@@ -6,9 +6,11 @@ from assoc.events.gate import GateInput, composite_attention, gate_events, is_st
 
 def test_percentile_rank_basic():
     history = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-    assert percentile_rank(10, history) == 1.0
+    assert percentile_rank(11, history) == 1.0
+    assert percentile_rank(10, history) == 0.9      # 「より小さい」ものの割合
     assert percentile_rank(0, history) == 0.0
-    assert percentile_rank(5, history) == 0.5
+    assert percentile_rank(5, history) == 0.4
+    assert percentile_rank(1, [1] * 10) == 0.0      # 同じ値ばかりでも上位扱いにしない
 
 
 def test_percentile_rank_empty_history_is_zero():
@@ -67,7 +69,7 @@ def test_gate_enforces_max_events_limit_by_score_order():
     hist = _history()
     events = [
         GateInput(event_id=f"e{i}", title=f"開示{i}", novelty_hash=f"h{i}",
-                   media_count=95 + i, gdelt=95 + i, wiki=95 + i)
+                   media_count=96 + i, gdelt=96 + i, wiki=96 + i)
         for i in range(5)
     ]
     results = gate_events(events, thresholds, media_history=hist, gdelt_history=hist, wiki_history=hist)

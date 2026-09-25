@@ -41,9 +41,11 @@ def _wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float] | None:
 
 
 def metrics(app: "App", month: str) -> dict[str, Any]:
-    picks = [p for p in app.store.read("pick_tracking") if p.get("event") == "first_pick"
-             and _in_month(p.get("first_pick_date"), month)]
     moved = {(p["scenario_id"], p["code"]): p for p in app.store.read("pick_tracking") if p.get("event") == "moved"}
+    all_picks = [p for p in app.store.read("pick_tracking") if p.get("event") == "first_pick"
+                 and _in_month(p.get("first_pick_date"), month)]
+    # 判定が終わったものだけを数える(動いた、または観測期間が終わった)。月初の集計で外れが過大にならないように
+    picks = [p for p in all_picks if (p["scenario_id"], p["code"]) in moved or _window_closed(p, app)]
 
     n = len(picks)
     k = sum(1 for p in picks if (p["scenario_id"], p["code"]) in moved)
@@ -51,9 +53,10 @@ def metrics(app: "App", month: str) -> dict[str, Any]:
     scen_hit = sum(1 for s in scen if any((s, p["code"]) in moved for p in picks if p["scenario_id"] == s))
     stage1 = [p for p in picks if p.get("stage") == 1]
     stage1_hit = sum(1 for p in stage1 if (p["scenario_id"], p["code"]) in moved)
-    leads = [moved[(p["scenario_id"], p["code"])].get("days_to_move") for p in picks
-             if (p["scenario_id"], p["code"]) in moved]
-    lead_ok = sum(1 for d in leads if d is not None and d >= 1)
+    # 先行性:動いた本命のうち、本命にした時点でまだ動き出していなかった(起動日からの超過上昇が +5% 未満)割合
+    moved_picks = [p for p in picks if (p["scenario_id"], p["code"]) in moved]
+    leads = [p for p in moved_picks if p.get("excess_at_pick") is not None]
+    lead_ok = sum(1 for p in leads if p["excess_at_pick"] < app.th.move_start_excess)
 
     runs = [r for r in app.store.read("run_log") if _in_month(r.get("date"), month)]
     executed = [r for r in runs if r.get("executed")]
@@ -61,6 +64,7 @@ def metrics(app: "App", month: str) -> dict[str, Any]:
     return {
         "month": month,
         "picks": n,
+        "picks_pending": len(all_picks) - n,
         "hit_rate_by_stock": round(k / n, 3) if n else None,
         "scenarios_with_picks": len(scen),
         "hit_rate_by_scenario": round(scen_hit / len(scen), 3) if scen else None,
@@ -73,6 +77,12 @@ def metrics(app: "App", month: str) -> dict[str, Any]:
                       "skip_reasons": [r.get("skip_reason") for r in runs if not r.get("executed")]},
         "note": "月次のレポートでは合否を判定しない(CONCEPT §9.2)",
     }
+
+
+def _window_closed(p: dict[str, Any], app: "App") -> bool:
+    from assoc.timeutil import business_days_between
+    first = date.fromisoformat(p["first_pick_date"])
+    return business_days_between(first, app.today()) > min(p["expected_days"], app.th.moved_max_days)
 
 
 def base_rate(app: "App", month: str) -> float | None:
@@ -120,7 +130,7 @@ def prepare(app: "App", month: str) -> Path:
     for p in app.store.read("pick_tracking"):
         if p.get("event") != "first_pick" or not _in_month(p.get("first_pick_date"), month):
             continue
-        if (p["scenario_id"], p["code"]) in moved:
+        if (p["scenario_id"], p["code"]) in moved or not _window_closed(p, app):
             continue
         sc = scenarios.get(p["scenario_id"])
         failures.append({"scenario_id": p["scenario_id"], "code": p["code"],

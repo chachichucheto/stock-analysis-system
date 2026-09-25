@@ -11,11 +11,11 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, time, timedelta
 
 from assoc.events.models import Event
 from assoc.ingest.common import normalize_text, sha256_hex
-from assoc.timeutil import jst_date, to_iso, utcnow
+from assoc.timeutil import JST, jst_date, to_iso, utcnow
 
 _ENTITY_RE = re.compile(r"[一-龥ー]{2,}|[ァ-ヶー]{2,}")
 _NOISE_CHARS = re.compile(r"[\s、。,\.　「」『』（）()【】\-—―:：/／]+")
@@ -129,6 +129,7 @@ def cluster(items: list[ClusterInput], *, threshold: float = 0.5) -> list[Event]
                 disclosure_type="disclosure" if disclosure_kinds else "",
                 novelty_hash=_novelty_hash(rep.title, c.entities),
                 codes=codes,
+                disclosure_ids=[m.id for m in c.members if m.kind == "disclosure"],
             )
         )
     return events
@@ -136,16 +137,24 @@ def cluster(items: list[ClusterInput], *, threshold: float = 0.5) -> list[Event]
 
 def build_events_for_day(con, as_of: date, *, threshold: float = 0.5) -> list[Event]:
     """DB からその日(日本時間)の news_item・disclosure を読み、イベント化する。"""
-    day_str = as_of.isoformat()
+    start = datetime.combine(as_of, time.min, tzinfo=JST)
+    return build_events_between(con, start, start + timedelta(days=1), threshold=threshold)
+
+
+def build_events_between(con, start: datetime, end: datetime, *, threshold: float = 0.5) -> list[Event]:
+    """start < 取得時刻 <= end の news_item・disclosure を読み、イベント化する。
+
+    夕方の入力パックは「前回のパックを作った時刻から今回まで」を対象にする。日付で区切ると、
+    パックを作った後の夜に取得したニュースが、どの日のパックにも入らなくなるため。"""
     news_rows = con.execute(
         """SELECT news_id, title, source, first_observed_at
-           FROM news_item WHERE CAST(first_observed_at AT TIME ZONE 'Asia/Tokyo' AS DATE) = ?""",
-        [day_str],
+           FROM news_item WHERE first_observed_at > ? AND first_observed_at <= ?""",
+        [start, end],
     ).fetchall()
     disc_rows = con.execute(
         """SELECT disclosure_id, title, source, first_observed_at, code
-           FROM disclosure WHERE CAST(first_observed_at AT TIME ZONE 'Asia/Tokyo' AS DATE) = ?""",
-        [day_str],
+           FROM disclosure WHERE first_observed_at > ? AND first_observed_at <= ?""",
+        [start, end],
     ).fetchall()
     items = [
         ClusterInput(id=r[0], title=r[1] or "", kind="news", source=r[2] or "",

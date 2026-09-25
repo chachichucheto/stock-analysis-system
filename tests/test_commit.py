@@ -91,3 +91,11 @@ def test_name_matching():
     assert MASTER.check("9983", "ユニクロ").ok
     assert not MASTER.check("8035", "アドバンテスト").ok
     assert not CompanyMaster({}).check("8035", "東京エレクトロン").ok
+
+
+def test_empty_night_commits(tmp_path):
+    # 実運用の夜の大半は「S・A級なし、シナリオなし」になる。この形がそのまま確定できること
+    store = RecordStore(tmp_path)
+    doc = json.loads((Path(__file__).parent / "fixtures" / "daily_output_empty_night.json").read_text(encoding="utf-8"))
+    r = commit_daily(doc, store, MASTER)
+    assert r.ok and r.counts["grade"] == 2 and r.counts["scenario"] == 0

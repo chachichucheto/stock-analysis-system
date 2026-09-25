@@ -1,0 +1,12 @@
+{
+  "run": {"date": "2026-10-02", "mode": "通常", "model_id": "example-model", "prompt_version": "daily-v1", "input_pack_hash": "0123456789abcdef"},
+  "premise_cards": [],
+  "grades": [
+    {"event_id": "EV-b", "provisional_grade": "B", "new_fact": "予想どおりの決算", "distance_from_premise": {"summary": "前提の範囲内", "numbers": []}, "source_certainty": "決算短信", "theme_ids": ["M01"], "premise_card_version": null, "check_basis": "なし", "check_codes": [], "new_theme_flag": false},
+    {"event_id": "EV-c", "provisional_grade": "C", "new_fact": "繰り返し報道", "distance_from_premise": {"summary": "新しい事実なし", "numbers": []}, "source_certainty": "論評", "theme_ids": [], "premise_card_version": null, "check_basis": "なし", "check_codes": [], "new_theme_flag": false}
+  ],
+  "scenario_updates": [],
+  "scenarios": [],
+  "evidence": [],
+  "check_status": []
+}

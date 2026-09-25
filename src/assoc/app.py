@@ -134,7 +134,9 @@ class App:
                 self.store.append("pick_tracking", {
                     "scenario_id": key[0], "code": key[1], "candidate_id": e.candidate.get("candidate_id"),
                     "stage": e.candidate.get("stage"), "first_pick_date": day.isoformat(),
-                    "expected_days": e.scenario.expected_days, "event": "first_pick"})
+                    "expected_days": e.scenario.expected_days, "event": "first_pick",
+                    # 先行性の判定用:本命にした時点で、起動日からすでにどれだけ上がっていたか
+                    "excess_at_pick": e.excess})
         if not evals:
             # 候補が無い日も「その日のレポートは該当なし」と分かるように印を残す
             self.store.append("ranking_snapshot", {"date": day.isoformat(), "empty": True})
@@ -152,6 +154,8 @@ class App:
             evidence.setdefault(ev["scenario_id"], []).append(ev)
         ended = [(scenarios[s["scenario_id"]], s.get("reason", "")) for s in self.store.read("scenario_status")
                  if s.get("date") == iso and s["status"] == "終了" and s["scenario_id"] in scenarios]
+        ended += [(scenarios[u["scenario_id"]], "シナリオが崩れた(消滅)") for u in self.store.read("scenario_update")
+                  if u.get("run_date") == iso and u["type"] == "消滅" and u["scenario_id"] in scenarios]
         signals = [(s["code"], s.get("company_name", ""), s["signals"]) for s in self.store.read("pick_tracking")
                    if s.get("event") == "sell_signal" and s.get("date") == iso]
         warnings = []
@@ -184,9 +188,25 @@ class App:
             if check_day > day:
                 continue
             prices = {c: p for c in g.get("check_codes", []) if not (p := loader.get(c)).empty}
+            if g["check_basis"] != "なし" and prices:
+                # 検算日の終値がまだ株価DBに入っていなければ、確定を次回に持ち越す(誤って格下げを記録しないため)
+                latest = min([p["date"].max() for p in prices.values()] + ([topix["date"].max()] if not topix.empty else []))
+                if topix.empty or latest < check_day:
+                    counts.setdefault("grade_waiting", 0)
+                    counts["grade_waiting"] += 1
+                    continue
             # ザラ場中のニュースは当日に、引け後のニュースは翌営業日に反応する。反応の大きいほうで判定する
-            results = [check_grade(g["provisional_grade"], g["check_basis"], g.get("check_codes", []), d,
-                                   prices, topix, self.th.vol_window, self.th) for d in (gdate, check_day)]
+            results = []
+            for d in (gdate, check_day):
+                try:
+                    results.append(check_grade(g["provisional_grade"], g["check_basis"], g.get("check_codes", []), d,
+                                               prices, topix, self.th.vol_window, self.th))
+                except (ValueError, KeyError, IndexError, ZeroDivisionError):
+                    continue        # 株価の履歴が足りない日(新規上場など)は検算に使わない
+            if not results:
+                from assoc.tracking.grade_check import GradeCheckResult
+                results = [GradeCheckResult(final_grade=g["provisional_grade"], reacted=None, max_sigma=None,
+                                            note="検算不能(株価の履歴が足りない)")]
             res = max(results, key=lambda x: -1 if x.max_sigma is None else x.max_sigma)
             self.store.append("grade_final", {"event_id": g["event_id"], "provisional_grade": g["provisional_grade"],
                                               "final_grade": res.final_grade, "reacted": res.reacted,

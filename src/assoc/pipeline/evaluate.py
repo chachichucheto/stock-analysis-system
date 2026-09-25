@@ -225,6 +225,17 @@ def _rank(evals: list[CandidateEval], loader: PriceLoader, eval_date: date, th: 
     for r in ranked:
         e = by_key[(r.candidate.scenario_id, r.candidate.code)]
         e.rank, e.tier, e.excluded_reason = r.rank, r.tier, r.excluded_reason
-        if not e.has_prices and e.tier == "本命":
-            e.tier, e.excluded_reason = "監視", "株価データが無い"
+        if not e.has_prices:
+            e.excluded_reason = "株価データが無い"
+    # 待機中(未起動)のシナリオの候補は本命にしない。時計が止まっているので「動いた」の判定も始めない
+    for e in evals:
+        if e.scenario.status == "待機":
+            e.excluded_reason = "待機中(未起動)"
     evals.sort(key=lambda e: e.rank)
+    promoted = 0
+    for e in evals:
+        if e.excluded_reason is None and e.candidate.get("side", "long") == "long" and promoted < th.max_picks:
+            e.tier = "本命"
+            promoted += 1
+        else:
+            e.tier = "監視"

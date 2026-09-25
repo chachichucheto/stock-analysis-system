@@ -145,7 +145,7 @@ def test_full_cycle(app, tmp_path):
     from assoc.review import monthly
     path = monthly.prepare(app, "2026-10")
     data = json.loads(path.read_text(encoding="utf-8"))
-    assert data["metrics"]["picks"] == len(picks)
+    assert data["metrics"]["picks"] + data["metrics"]["picks_pending"] == len(picks)   # 判定中のものは分母に入れない
 
     # 記録は書き換えられていない
     assert app.verify() == []

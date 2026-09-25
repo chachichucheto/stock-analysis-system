@@ -65,7 +65,10 @@ def _card(e: CandidateEval, ctx: DayContext, n: int) -> list[str]:
     for ev in ctx.evidence.get(sc.scenario_id, []):
         if ev.get("supports") == "against":
             lines.append(f"- **反証**:{ev.get('value', '')}({ev.get('url', '')}・信頼度{ev.get('source_tier')})")
-    lines += [f"- **崩れる条件**:{' / '.join(c.get('break_conditions', []))}",
+    breaks = list(c.get("break_conditions", []))
+    if e.aids and e.aids.earnings_warning:
+        breaks.append("(自動)想定期間内に決算発表がある")     # DESIGN §8.2
+    lines += [f"- **崩れる条件**:{' / '.join(breaks)}",
               f"- **次の材料**:{c.get('next_catalyst', '―')}"]
     if e.aids:
         a = e.aids

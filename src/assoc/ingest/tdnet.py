@@ -31,6 +31,8 @@
 """
 from __future__ import annotations
 
+from assoc.timeutil import is_business_day
+
 import re
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -142,8 +144,13 @@ def fetch_day(cfg, con, day: date, limiter: RateLimiter | None = None, max_pages
         url = LIST_URL.format(page=page, ymd=ymd)
         try:
             resp = limiter.get(url)
-        except Exception:
-            break  # 404 など。その日はここまで(祝日は1ページ目から取れないこともある)
+        except Exception as e:
+            # 2ページ目以降の失敗(404)はページ送りの終わり。1ページ目の失敗は、平日なら収集の失敗として扱う
+            # (「成功・0件」と記録すると、3回連続失敗の警告が出なくなるため)
+            status = getattr(getattr(e, "response", None), "status_code", None)
+            if page == 1 and is_business_day(day) and status != 404:
+                raise
+            break
         html = decode_tdnet_html(resp.content)
         items = parse_list_page(html, list_date=day)
         if not items:
@@ -162,9 +169,15 @@ def fetch_tdnet(cfg, con, start: date | None = None, end: date | None = None) ->
         float(cfg.section("collect").get("request_interval_sec", 1.0)),
         cfg.section("collect").get("user_agent", "assoc-research/0.1"),
     )
-    total = 0
+    total, failed, last_error = 0, [], None
     d = start
     while d <= end:
-        total += fetch_day(cfg, con, d, limiter=limiter)
+        try:
+            total += fetch_day(cfg, con, d, limiter=limiter)
+        except Exception as e:          # 1日の失敗で、残りの日の取得を止めない
+            failed.append(d.isoformat())
+            last_error = e
         d += timedelta(days=1)
+    if failed:
+        raise RuntimeError(f"TDnet の取得に失敗した日: {', '.join(failed)}(取得できた件数 {total})") from last_error
     return total

@@ -26,8 +26,13 @@ def cmd_doctor(args) -> int:
 
 def cmd_collect(args) -> int:
     summary = _app(args).collect(args.sources.split(",") if args.sources else None)
-    print(json.dumps(summary, ensure_ascii=False, indent=1, default=str))
-    return 0
+    failed = 0
+    for name, r in summary.items():
+        ok = getattr(r, "ok", True)
+        failed += not ok
+        msg = getattr(r, "message", "") or ""
+        print(f"  {'✓' if ok else '✗'} {name}: {getattr(r, 'items', r)} 件 {msg}")
+    return 1 if failed else 0
 
 
 def cmd_backfill_tdnet(args) -> int:
@@ -209,7 +214,12 @@ def main(argv: list[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")      # Windows のコンソールで文字化けしないように
     args = build_parser().parse_args(argv)
-    code = args.func(args)
+    try:
+        code = args.func(args)
+    except (FileNotFoundError, ValueError) as e:
+        # 設定の不足や、確定する出力が無いなど、利用者が直せるものは1行で案内する
+        print(f"エラー: {e}")
+        return 1
     if args.command in ("report", "nextday", "collect", "commit") and code == 0:
         _refresh_dashboard(args)
     return code

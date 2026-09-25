@@ -49,11 +49,13 @@ class GateInput:
 
 
 def percentile_rank(value: float, history: list[float]) -> float:
-    """history の中で value 以下の割合(0〜1)。history が空なら 0.0(判定不能)を返す。"""
+    """history の中で value より小さいものの割合(0〜1)。history が空なら 0.0(判定不能)を返す。
+
+    「以下」で数えると、同じ値ばかりの履歴(媒体数が1件のイベントが大半、など)で全件が上位扱いになる。"""
     if not history:
         return 0.0
-    below_or_equal = sum(1 for h in history if h <= value)
-    return below_or_equal / len(history)
+    below = sum(1 for h in history if h < value)
+    return below / len(history)
 
 
 def is_strong_disclosure(title: str) -> bool:
@@ -136,7 +138,9 @@ def gate_events(
             continue
         cold_start = len(media_history) < COLD_START_MIN_HISTORY
         meets_attention = score >= thresholds.gate_attention_pct or (cold_start and e.media_count > 0)
-        meets_growth = growth_pct >= thresholds.gate_attention_pct
+        # 伸びをまだ計測していない間(値も履歴もすべて0)は、判定に使わない
+        meets_growth = (e.growth > 0 and any(g > 0 for g in growth_history)
+                        and growth_pct >= thresholds.gate_attention_pct)
         meets_strong = is_strong_disclosure(e.title) or is_strong_disclosure(e.disclosure_type)
         if not (meets_attention or meets_growth or meets_strong or forced):
             results[e.event_id] = GateResult(

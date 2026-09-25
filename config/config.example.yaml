@@ -41,7 +41,42 @@ collect:
     - name: Google ニュース トップ
       url: https://news.google.com/rss?hl=ja&gl=JP&ceid=JP:ja
       tier: 2
-  google_news_queries: []        # 注目度の計測用のキーワード
+  # 注目度の計測用のキーワード(Google News・GDELT)。THEMES.md の主なテーマから。増やしすぎると収集が遅くなる
+  google_news_queries:
+    - 半導体
+    - 生成AI
+    - データセンター
+    - 防衛
+    - 造船
+    - 量子コンピュータ
+    - 宇宙
+    - サイバーセキュリティ
+    - 原発
+    - 核融合
+    - 国土強靱化
+    - レアアース
+    - 消費税減税
+    - 日銀 利上げ
+    - 円安
+    - インバウンド
+    - TOB
+    - アクティビスト
+    - 大量保有報告書
+    - 地震
+  # 一般の関心を測る Wikipedia(日本語版)の記事名。記事名は正確に(存在しない記事は 0 になる)
+  wikipedia_articles:
+    - 半導体
+    - 生成的人工知能
+    - データセンター
+    - 防衛費
+    - 量子コンピュータ
+    - 核融合炉
+    - 原子力発電
+    - レアアース
+    - 消費税
+    - 日本銀行
+    - 訪日外国人旅行
+    - 南海トラフ巨大地震
   # JPX の上場銘柄一覧(Excel)。URL が変わることがあるので、取れないときは JPX のサイトで確認する
   jpx_universe_url: https://www.jpx.co.jp/markets/statistics-equities/misc/tvdivq0000001vg2-att/data_j.xls
   earnings_schedule_url: ""      # 決算発表予定日の一覧(配布 URL は S1 で確認する)

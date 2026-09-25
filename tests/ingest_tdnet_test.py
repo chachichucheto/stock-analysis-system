@@ -35,3 +35,23 @@ def test_parse_list_page_disclosure_id_is_stable():
 
 def test_parse_list_page_empty_returns_empty_list():
     assert parse_list_page("<html><body><table></table></body></html>", list_date=date(2026, 9, 25)) == []
+
+
+def test_first_page_failure_on_business_day_is_reported(tmp_path):
+    from datetime import date
+
+    import pytest
+
+    from assoc.config import Config
+    from assoc.ingest import tdnet
+    from assoc.store.db import connect
+
+    class Boom:
+        def get(self, url):
+            raise ConnectionError("接続できません")
+
+    con = connect(tmp_path)
+    cfg = Config(raw={"collect": {}})
+    with pytest.raises(ConnectionError):
+        tdnet.fetch_day(cfg, con, date(2026, 10, 1), limiter=Boom())      # 平日
+    assert tdnet.fetch_day(cfg, con, date(2026, 10, 3), limiter=Boom()) == 0   # 土曜は「開示なし」
