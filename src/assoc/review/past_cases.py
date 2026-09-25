@@ -41,11 +41,25 @@ def compute_case(case: dict, source, topix_code: str, moved_excess: float, start
     return notes
 
 
+def check_codes(case: dict, master) -> list[str]:
+    """過去事例の銘柄コードと社名を、銘柄マスタと照合する(LLM の取り違え対策。上場廃止銘柄はマスタに無い)。"""
+    notes = []
+    for rel in case.get("related", []):
+        r = master.check(str(rel["code"]), rel.get("company_name", ""))
+        if not r.ok:
+            notes.append(f"{case['case_id']} {rel['code']} {rel.get('company_name', '')}: {r.reason}")
+    return notes
+
+
 def compute_all(app: "App") -> list[str]:
+    from assoc.master.names import CompanyMaster
     source = price_source_from_config(app.cfg)
+    master = CompanyMaster.from_db(app.con, REPO_ROOT / "knowledge" / "aliases.yaml")
     out = []
     for f in sorted((REPO_ROOT / "knowledge" / "past_cases").glob("PC*.yaml")):
         case = yaml.safe_load(f.read_text(encoding="utf-8"))
+        if len(master):
+            out += [f"⚠ 照合: {n}" for n in check_codes(case, master)]
         out += compute_case(case, source, app.topix_code(), app.th.moved_excess, app.th.move_start_excess)
         f.write_text(yaml.safe_dump(case, allow_unicode=True, sort_keys=False), encoding="utf-8")
         out.append(f"{f.name}: 計算しました")
