@@ -19,8 +19,8 @@ def _stock(days):
 
 
 def test_earnings_warning_when_within_expected_period():
-    days = business_days(date(2026, 9, 28), 25)
-    eval_date = days[0]
+    days = business_days(date(2026, 9, 28), 30)
+    eval_date = days[-1]
     earnings_date = add_business_days(eval_date, 5)
     stock = _stock(days)
 
@@ -34,8 +34,8 @@ def test_earnings_warning_when_within_expected_period():
 
 
 def test_earnings_on_eval_date_itself_counts_as_zero_days():
-    days = business_days(date(2026, 9, 28), 5)
-    eval_date = days[0]
+    days = business_days(date(2026, 9, 28), 30)
+    eval_date = days[-1]
     stock = _stock(days)
 
     result = trade_aids(
@@ -48,8 +48,8 @@ def test_earnings_on_eval_date_itself_counts_as_zero_days():
 
 
 def test_no_earnings_warning_when_beyond_expected_period():
-    days = business_days(date(2026, 9, 28), 25)
-    eval_date = days[0]
+    days = business_days(date(2026, 9, 28), 30)
+    eval_date = days[-1]
     earnings_date = add_business_days(eval_date, 15)
     stock = _stock(days)
 
@@ -62,10 +62,10 @@ def test_no_earnings_warning_when_beyond_expected_period():
 
 
 def test_no_earnings_date_gives_no_warning():
-    days = business_days(date(2026, 9, 28), 5)
+    days = business_days(date(2026, 9, 28), 30)
     stock = _stock(days)
     result = trade_aids(
-        days[0], expected_days=10, price=1000.0, prices=stock,
+        days[-1], expected_days=10, price=1000.0, prices=stock,
         earnings_date=None, ex_rights_date=None,
         credit_restriction=False, thresholds=THRESHOLDS,
     )
@@ -74,8 +74,8 @@ def test_no_earnings_date_gives_no_warning():
 
 
 def test_ex_rights_within_period_flag():
-    days = business_days(date(2026, 9, 28), 25)
-    eval_date = days[0]
+    days = business_days(date(2026, 9, 28), 30)
+    eval_date = days[-1]
     ex_rights_date = add_business_days(eval_date, 3)
     stock = _stock(days)
 
