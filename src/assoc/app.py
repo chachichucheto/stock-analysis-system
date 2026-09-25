@@ -135,6 +135,9 @@ class App:
                     "scenario_id": key[0], "code": key[1], "candidate_id": e.candidate.get("candidate_id"),
                     "stage": e.candidate.get("stage"), "first_pick_date": day.isoformat(),
                     "expected_days": e.scenario.expected_days, "event": "first_pick"})
+        if not evals:
+            # 候補が無い日も「その日のレポートは該当なし」と分かるように印を残す
+            self.store.append("ranking_snapshot", {"date": day.isoformat(), "empty": True})
         ctx = self._day_context(day)
         return write_daily(self.dir("reports"), self.dir("export"), day, evals, ctx)
 
@@ -227,6 +230,8 @@ class App:
         already_moved = {(p["scenario_id"], p["code"]) for p in self.store.read("pick_tracking") if p.get("event") == "moved"}
         last_signals = {(p["scenario_id"], p["code"]): p["signals"] for p in self.store.read("pick_tracking")
                         if p.get("event") == "sell_signal"}
+        last_priced = {(r["scenario_id"], r["code"]): r["priced_in"] for r in self.store.read("ranking_snapshot")
+                       if not r.get("empty")}
         for p in picks:
             key = (p["scenario_id"], p["code"])
             first = date.fromisoformat(p["first_pick_date"])
@@ -243,11 +248,16 @@ class App:
             if sc is None:
                 continue
             e = eval_by_key.get(key)
-            weakened = sc.status == "終了" or any(u["type"] in ("弱体化", "消滅") for u in sc.updates)
+            # 「織り込み完了」で終わったシナリオは弱体化ではない(完了のサインとして扱う)
+            weakened = any(u["type"] in ("弱体化", "消滅") for u in sc.updates) or (
+                sc.status == "終了" and sc.end_reason in ("材料が弱かった", "連想が市場に届かなかった", "シナリオが崩れた"))
+            # 織り込み度は銘柄ごとに見る(シナリオが終わった後は、最後のランキングの値を使う)
+            priced = e.priced_in if e else self._priced_in_now(sc, prices, topix, day, last_priced.get(key, 0.0))
+            if sc.status == "終了" and not weakened and priced < self.th.priced_in_near:
+                weakened = True     # シナリオが終わったのに、この銘柄は動かなかった
             remaining = e.remaining_days if e and e.remaining_days is not None else 99
             sig = sell_signals(SellSignalInput(break_condition_triggered=False, scenario_weakened_or_dead=weakened,
-                                               priced_in_value=e.priced_in if e else 0.0, remaining_days=remaining),
-                               self.th)
+                                               priced_in_value=priced, remaining_days=remaining), self.th)
             # 同じサインを毎日繰り返さない。サインの中身が変わったときだけ記録する
             if sig and sig != last_signals.get(key) and business_days_between(first, day) <= 60:
                 name = next((c.get("master_name") or c["company_name"] for c in sc.candidates if c["code"] == key[1]), "")
@@ -255,6 +265,17 @@ class App:
                                                     "event": "sell_signal", "signals": sig, "date": day.isoformat()})
                 counts["sell_signal"] += 1
         return counts
+
+    def _priced_in_now(self, sc, prices, topix, day: date, fallback: float) -> float:
+        """終わったシナリオの銘柄の織り込み度を、その日の株価で計算し直す。"""
+        from assoc.scoring.priced_in import priced_in
+        median = sc.expected_rise.get("median") or 0.0
+        if sc.started_date is None or median <= 0 or prices.empty or topix.empty:
+            return fallback
+        try:
+            return priced_in(prices, topix, sc.started_date, day, median, sc.expected_rise.get("version", 1)).value
+        except (ValueError, KeyError, IndexError):
+            return fallback
 
     # ---- 翌朝:米国の1段目 -------------------------------------------------------
     def morning(self, day: date | None = None) -> list[str]:

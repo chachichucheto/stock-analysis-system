@@ -25,7 +25,7 @@ def test_break_condition_signal():
 def test_scenario_weakened_signal():
     inp = SellSignalInput(False, True, 0.0, 5)
     signals = sell_signals(inp, THRESHOLDS)
-    assert "シナリオが弱体化・消滅した" in signals
+    assert "シナリオが弱体化・終了した" in signals
 
 
 def test_priced_in_near_completion_signal_at_the_boundary():

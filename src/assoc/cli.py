@@ -119,6 +119,25 @@ def cmd_pastcase(args) -> int:
     return 0
 
 
+def cmd_dashboard(args) -> int:
+    from assoc.dashboard.build import build_dashboard
+    path = build_dashboard(_app(args))
+    print(f"ダッシュボード: {path}")
+    if args.open:
+        import webbrowser
+        webbrowser.open(path.resolve().as_uri())
+    return 0
+
+
+def _refresh_dashboard(args) -> None:
+    """レポート・翌日の処理・収集のあとにダッシュボードを作り直す。失敗しても本来の処理は止めない。"""
+    try:
+        from assoc.dashboard.build import build_dashboard
+        build_dashboard(_app(args))
+    except Exception as e:
+        print(f"(ダッシュボードの更新に失敗: {e})")
+
+
 def cmd_verify(args) -> int:
     problems = _app(args).verify()
     print("\n".join(problems) or "記録は正常です(書き換えは見つかりません)")
@@ -177,6 +196,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("action", choices=["compute"])
     s.set_defaults(func=cmd_pastcase)
 
+    s = sub.add_parser("dashboard", help="ダッシュボード(data/reports/dashboard.html)を作る")
+    s.add_argument("--open", action="store_true", help="作ったあとブラウザで開く")
+    s.set_defaults(func=cmd_dashboard)
+
     sub.add_parser("verify", help="記録が書き換えられていないか確認する").set_defaults(func=cmd_verify)
     sub.add_parser("backup", help="記録を複製する").set_defaults(func=cmd_backup)
     return p
@@ -186,4 +209,7 @@ def main(argv: list[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")      # Windows のコンソールで文字化けしないように
     args = build_parser().parse_args(argv)
-    return args.func(args)
+    code = args.func(args)
+    if args.command in ("report", "nextday", "collect", "commit") and code == 0:
+        _refresh_dashboard(args)
+    return code
