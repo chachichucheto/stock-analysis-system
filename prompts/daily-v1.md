@@ -104,6 +104,15 @@
   - `source_tier`:1 = 公的統計・TDnet・EDINET、2 = 大手の報道機関、3 = 業界紙・専門メディア、4 = 個人ブログ・掲示板・まとめサイト・SNS
 - 矢印ごとの結論を `check_status` に書きます。**信頼度1・2の支持する証拠が無いのに「確認」と書かないでください**(確定処理で「未確認」に直されます)。
 
+### 手順4.5 テーマの温度(週1回だけ)
+
+入力パックの `temperature_update_due` が true の日だけ行います(前回の更新から7日以上たっている日)。
+
+- この1週間にニュースが出たテーマについて、温度を「上昇中/横ばい/冷却中」のどれかにし、`theme_temperatures` に理由とともに書きます。
+- 判断の材料は、その週のテーマ関連のニュースの数と中身、関連銘柄の値動き(`market`)です。
+- ニュースが無かったテーマは書かなくて構いません(前回の温度のまま)。
+- `temperature_update_due` が false の日は、`theme_temperatures` を空にします。
+
 ### 手順5 出力
 
 `schemas/daily_output.schema.json` に合う JSON を1つ作り、`data/inbox/daily_YYYY-MM-DD.json` に保存します。

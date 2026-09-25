@@ -120,6 +120,8 @@ def build_pack(app: "App", day: date) -> Path:
     themes = _load_themes()
     cards = latest_by(app.store, "premise_card", "theme_id")
     temps = latest_by(app.store, "theme_temperature", "theme_id")
+    last_temp = max((r.get("run_date", "") for r in temps.values()), default="")
+    temperature_due = not last_temp or (day - date.fromisoformat(last_temp)).days >= 7
     theme_rows = [{"theme_id": tid, "name": name, "temperature": temps.get(tid, {}).get("temperature"),
                    "premise_card": {k: cards[tid][k] for k in ("version", "market_premise", "key_numbers",
                                                                "breaking_directions")} if tid in cards else None}
@@ -151,6 +153,9 @@ def build_pack(app: "App", day: date) -> Path:
         "past_cases": _load_past_cases(),
         "market": market,
         "releases_today": releases_today,
+        # 週1回、テーマの温度を更新する日かどうか(前回の更新から7日以上たっていれば true)
+        "temperature_update_due": temperature_due,
+        "temperature_last_updated": last_temp or None,
     }
     body = json.dumps(pack, ensure_ascii=False, sort_keys=True, default=str)
     pack["input_pack_hash"] = hashlib.sha256(body.encode("utf-8")).hexdigest()[:16]

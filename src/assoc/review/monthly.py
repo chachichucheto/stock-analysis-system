@@ -58,6 +58,12 @@ def metrics(app: "App", month: str) -> dict[str, Any]:
     leads = [p for p in moved_picks if p.get("excess_at_pick") is not None]
     lead_ok = sum(1 for p in leads if p["excess_at_pick"] < app.th.move_start_excess)
 
+    # あなたの判断の成績:「買う」とした本命と、それ以外の本命の的中率(CONCEPT §9.2)
+    decisions = {(d["scenario_id"], d["code"]): d["action"] for d in app.store.read("user_decision")}
+    bought = [p for p in picks if decisions.get((p["scenario_id"], p["code"])) == "買う"]
+    others = [p for p in picks if decisions.get((p["scenario_id"], p["code"])) in ("監視", "見送り")]
+    def _rate(ps):
+        return round(sum(1 for p in ps if (p["scenario_id"], p["code"]) in moved) / len(ps), 3) if ps else None
     runs = [r for r in app.store.read("run_log") if _in_month(r.get("date"), month)]
     executed = [r for r in runs if r.get("executed")]
     durations = sorted(r["duration_min"] for r in executed if r.get("duration_min") is not None)
@@ -72,6 +78,8 @@ def metrics(app: "App", month: str) -> dict[str, Any]:
         "stage1_only_hit_rate": round(stage1_hit / len(stage1), 3) if stage1 else None,
         "lead_rate": round(lead_ok / len(leads), 3) if leads else None,
         "base_rate": base_rate(app, month),
+        "user_bought_hit_rate": _rate(bought), "user_bought": len(bought),
+        "user_passed_hit_rate": _rate(others), "user_passed": len(others),
         "operation": {"executed_days": len(executed), "skipped_days": len(runs) - len(executed),
                       "median_minutes": durations[len(durations) // 2] if durations else None,
                       "skip_reasons": [r.get("skip_reason") for r in runs if not r.get("executed")]},
@@ -193,6 +201,8 @@ def render(month: str, m: dict[str, Any], doc: dict[str, Any]) -> str:
               f"| 1段目だけの的中率 | {pct(m.get('stage1_only_hit_rate'))} |",
               f"| 先行性 | {pct(m.get('lead_rate'))} |",
               f"| 捕捉率 | {m.get('capture_note', '―')} |",
+              f"| あなたが「買う」とした本命の的中率 | {pct(m.get('user_bought_hit_rate'))}({m.get('user_bought', 0)} 件) |",
+              f"| 「監視・見送り」とした本命の的中率 | {pct(m.get('user_passed_hit_rate'))}({m.get('user_passed', 0)} 件) |",
               "", "## 4. 改善の提案(ユーザーの了承後に反映する)", ""]
     lines += [f"- [{x['target']}] {x['proposal']}(理由:{x['reason']})" for x in doc["improvements"]] or ["- なし"]
     lines += ["", "## 5. 運用の状況", "",

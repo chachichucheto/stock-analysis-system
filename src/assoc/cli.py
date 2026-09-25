@@ -143,6 +143,22 @@ def _refresh_dashboard(args) -> None:
         print(f"(ダッシュボードの更新に失敗: {e})")
 
 
+def cmd_decide(args) -> int:
+    """本命に対するあなたの判断(買う/監視/見送り)を記録する(CONCEPT §9.1。任意)。"""
+    app = _app(args)
+    picks = [p for p in app.store.read("pick_tracking") if p.get("event") == "first_pick" and p["code"] == args.code]
+    if not picks:
+        print(f"エラー: {args.code} は本命に挙げた記録がありません")
+        return 1
+    p = picks[-1]
+    from assoc.timeutil import to_iso, utcnow
+    app.store.append("user_decision", {"scenario_id": p["scenario_id"], "code": args.code,
+                                       "candidate_id": p.get("candidate_id"), "action": args.action,
+                                       "reason": args.reason or "", "decided_at": to_iso(utcnow())})
+    print(f"記録しました: {args.code} {args.action}({p['scenario_id']})")
+    return 0
+
+
 def cmd_verify(args) -> int:
     problems = _app(args).verify()
     print("\n".join(problems) or "記録は正常です(書き換えは見つかりません)")
@@ -200,6 +216,12 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("pastcase", help="過去事例ライブラリの値動きを計算する")
     s.add_argument("action", choices=["compute"])
     s.set_defaults(func=cmd_pastcase)
+
+    s = sub.add_parser("decide", help="本命に対するあなたの判断を記録する(任意)")
+    s.add_argument("code", help="銘柄コード")
+    s.add_argument("action", choices=["買う", "監視", "見送り"])
+    s.add_argument("--reason", help="理由(一言)")
+    s.set_defaults(func=cmd_decide)
 
     s = sub.add_parser("dashboard", help="ダッシュボード(data/reports/dashboard.html)を作る")
     s.add_argument("--open", action="store_true", help="作ったあとブラウザで開く")

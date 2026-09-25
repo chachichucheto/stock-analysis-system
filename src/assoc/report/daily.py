@@ -41,7 +41,7 @@ def _card(e: CandidateEval, ctx: DayContext, n: int) -> list[str]:
         (grade.get("provisional_grade") and f"{grade['provisional_grade']}(暫定。翌日に確定)") or "―"
     lines = [f"### 本命{n}位 {name}({c['code']})  自信度 {STAR * e.stars}", "",
              f"- **シナリオ**:{sc.statement}({sc.scenario_id}・強さ {sc.strength})",
-             f"- **等級**:{grade_txt}",
+             f"- **等級**:{grade_txt}" + ("(新テーマ候補:どのテーマにも当てはまらない)" if sc.new_theme_flag else ""),
              f"- **連想の道筋**:{c.get('stage')}段目・{c.get('viewpoint')}の視点 ― {c.get('rationale', '')}",
              f"- **材料の大きさ**:想定上昇幅 {_pct(er.get('low'), True)}〜{_pct(er.get('high'), True)}"
              f"(中央 {_pct(er.get('median'), True)})。根拠:{er.get('basis', '')}"]
@@ -79,7 +79,7 @@ def _card(e: CandidateEval, ctx: DayContext, n: int) -> list[str]:
                      f"値幅制限 ±{a.price_limit_yen:,.0f}円")
     if e.notes:
         lines.append(f"- 注記:{' / '.join(e.notes)}")
-    lines += ["- あなたの判断(任意):[ 買う / 監視 / 見送り ] 理由:", ""]
+    lines += [f"- あなたの判断(任意):`python -m assoc decide {c['code']} 買う --reason \"一言\"`(買う/監視/見送り)", ""]
     return lines
 
 

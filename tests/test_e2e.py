@@ -127,6 +127,12 @@ def test_full_cycle(app, tmp_path):
     assert picks and all(p["first_pick_date"] == DAY0.isoformat() for p in picks)
     assert csv_path.read_text(encoding="utf-8-sig").startswith("日付")
 
+    # あなたの判断の記録(任意)
+    code = picks[0]["code"]
+    app.store.append("user_decision", {"scenario_id": picks[0]["scenario_id"], "code": code,
+                                       "action": "買う", "reason": "テスト", "decided_at": "2026-10-01T12:00:00+00:00"})
+    assert json.loads(app.prepare(add_business_days(DAY0, 1)).read_text(encoding="utf-8"))["temperature_update_due"] is True
+
     # 翌日以降:等級の確定、「動いた」の判定
     d = DAY0
     for _ in range(8):
