@@ -390,7 +390,7 @@ LLM に渡す JSON には、次をまとめる。
 │   ├── report/ dashboard/ O1・O3、ダッシュボード
 │   ├── watch.py           候補ウォッチ / shared_export.py 共有棚 / netfix.py 日本語パス対策
 │   └── app.py cli.py      処理のまとまりとコマンド
-├── tests/                 pytest(208件)
+├── tests/                 pytest(210件)
 └── data/                  ← .gitignore
     ├── assoc.duckdb       収集データ(ニュース・開示・銘柄一覧・決算予定日・株価の記録)
     ├── records/           追記専用の記録(バックアップ対象。ハッシュの鎖)

@@ -14,7 +14,9 @@ from assoc.app import App
 from assoc.config import Config
 from assoc.timeutil import add_business_days, is_business_day
 
-DAY0 = date(2026, 10, 1)           # ニュースが出た日(木)
+# ニュースが出た日(木)。**実際の今日より前の固定日にする**(今日以降にすると、実際の時刻に依存して
+# 午前中だけ失敗する時限式のテストになる。2026-10-01 に実際に起きた)
+DAY0 = date(2026, 9, 3)
 
 
 def _days(start: date, n_before: int, n_after: int) -> list[date]:
@@ -55,7 +57,7 @@ def app(tmp_path):
                       "prices": {"source": "csv_dir", "csv_dir": str(prices), "topix_code": "1306"},
                       "collect": {}})
     a = App(cfg)
-    now = datetime(2026, 10, 1, 9, 0, tzinfo=timezone.utc)
+    now = datetime(DAY0.year, DAY0.month, DAY0.day, 9, 0, tzinfo=timezone.utc)
     for code, name in [("8035", "東京エレクトロン"), ("6920", "レーザーテック"), ("6146", "ディスコ"), ("1306", "TOPIX連動")]:
         a.con.execute("INSERT INTO universe_daily VALUES (?, ?, ?, 'プライム', '電気機器', '通常', ?)",
                       [DAY0, code, name, now])
@@ -99,7 +101,7 @@ def _llm_output(pack: dict) -> dict:
                  "rationale": "x", "break_conditions": ["x"], "next_catalyst": "x", "realization_prob": 0.9,
                  "direction_clear": True}],
             "rejected_candidates": []}],
-        "evidence": [{"scenario": "new1", "arrow_no": 1, "url": "https://example.com/ir", "retrieved_at": "2026-10-01T11:00:00Z",
+        "evidence": [{"scenario": "new1", "arrow_no": 1, "url": "https://example.com/ir", "retrieved_at": f"{DAY0.isoformat()}T11:00:00Z",
                       "value": "明記", "source_tier": 1, "supports": "for", "published_at": None}],
         "check_status": [{"scenario": "new1", "arrow_no": 1, "status": "確認"}],
     }
@@ -130,7 +132,7 @@ def test_full_cycle(app, tmp_path):
     # あなたの判断の記録(任意)
     code = picks[0]["code"]
     app.store.append("user_decision", {"scenario_id": picks[0]["scenario_id"], "code": code,
-                                       "action": "買う", "reason": "テスト", "decided_at": "2026-10-01T12:00:00+00:00"})
+                                       "action": "買う", "reason": "テスト", "decided_at": f"{DAY0.isoformat()}T12:00:00+00:00"})
     assert json.loads(app.prepare(add_business_days(DAY0, 1)).read_text(encoding="utf-8"))["temperature_update_due"] is True
 
     # 翌日以降:等級の確定、「動いた」の判定
@@ -149,7 +151,7 @@ def test_full_cycle(app, tmp_path):
     # 月次:集計
     review = app.dir("reviews")
     from assoc.review import monthly
-    path = monthly.prepare(app, "2026-10")
+    path = monthly.prepare(app, DAY0.strftime("%Y-%m"))
     data = json.loads(path.read_text(encoding="utf-8"))
     assert data["metrics"]["picks"] + data["metrics"]["picks_pending"] == len(picks)   # 判定中のものは分母に入れない
 

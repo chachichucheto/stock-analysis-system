@@ -32,6 +32,7 @@ import feedparser
 
 from assoc.ingest.common import (
     RateLimiter,
+    log_fetch,
     news_id_from_url,
     normalize_text,
     text_hash,
@@ -161,10 +162,17 @@ def fetch_google_news(cfg, con, extra_keywords: list[str] | None = None) -> int:
         float(collect.get("request_interval_sec", 1.0)),
         collect.get("user_agent", "assoc-research/0.1"),
     )
-    total = 0
+    total, failed, last_error = 0, [], None
     today = jst_date(utcnow())
     for kw in keywords:
-        resp = limiter.get(SEARCH_URL.format(q=quote(kw)))
-        total += upsert_news_items(con, parse_search_rss(resp.content, keyword=kw))
-        upsert_attention(con, aggregate_media_count(resp.content, keyword=kw, target_date=today))
+        try:
+            resp = limiter.get(SEARCH_URL.format(q=quote(kw)))
+            total += upsert_news_items(con, parse_search_rss(resp.content, keyword=kw))
+            upsert_attention(con, aggregate_media_count(resp.content, keyword=kw, target_date=today))
+        except Exception as e:      # 1つのキーワードの一時的な失敗(404 など)で、残りの収集を止めない
+            failed.append(kw)       # (2026-10-01 0:00 に、最初のキーワードの404で20件すべてが失敗した)
+            last_error = e
+            log_fetch(con, f"google_news:{kw}", False, 0, f"{type(e).__name__}: {str(e)[:120]}")
+    if keywords and len(failed) == len(keywords):
+        raise RuntimeError(f"Google News: 全キーワードで取得に失敗({len(failed)}件)") from last_error
     return total
