@@ -126,9 +126,9 @@ powershell -ExecutionPolicy Bypass -File scripts\windows\register_tasks.ps1
 |---|---|---|
 | assoc_collect | 1時間ごと | ニュース・Google News・TDnet の収集 |
 | assoc_daily | 17:30 | EDINET・上場銘柄一覧・決算予定・GDELT・Wikipedia の収集 |
-| assoc_prepare | 18:00 | イベント化・足切り・入力パックの作成 |
+| assoc_prepare | 18:15 | イベント化・足切り・入力パックの作成 |
 | assoc_morning | 7:30 | 米国の1段目の反応の確認 |
-| assoc_nextday | 16:00 | 等級の確定・状態の更新・売りのサイン |
+| assoc_nextday | 19:30 | 等級の確定・状態の更新・売りのサイン(既存システムの株価更新[約19:06]のあとに走らせる) |
 | assoc_backup | 23:30 | 記録の複製 |
 
 解除するときは `register_tasks.ps1 -Remove` を実行します。ログは `data\logs\` に出ます。

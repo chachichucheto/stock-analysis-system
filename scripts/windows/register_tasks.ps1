@@ -13,7 +13,8 @@ $tasks = @(
     @{ Name = "assoc_daily";    Args = "collect --sources edinet,universe,calendar,gdelt,wikipedia"; Trigger = (New-ScheduledTaskTrigger -Daily -At "17:30") },
     @{ Name = "assoc_prepare";  Args = "prepare";  Trigger = (New-ScheduledTaskTrigger -Daily -At "18:15") },
     @{ Name = "assoc_morning";  Args = "morning";  Trigger = (New-ScheduledTaskTrigger -Daily -At "07:30") },
-    @{ Name = "assoc_nextday";  Args = "nextday";  Trigger = (New-ScheduledTaskTrigger -Daily -At "16:00") },
+    # 19:30: 既存システムの日次処理(16:30開始)で株価ファイルが更新される(約19:06)のを待つ。16:00だと前日の株価になる
+    @{ Name = "assoc_nextday";  Args = "nextday";  Trigger = (New-ScheduledTaskTrigger -Daily -At "19:30") },
     @{ Name = "assoc_backup";   Args = "backup";   Trigger = (New-ScheduledTaskTrigger -Daily -At "23:30") }
 )
 

@@ -16,7 +16,7 @@
 
 ## 毎日の使い方(概要)
 
-- 自動:ニュース・TDnet の収集(1時間ごと)、入力パックの作成(18:15)、等級の確定と状態の更新(翌16:00)
+- 自動:ニュース・TDnet の収集(1時間ごと)、入力パックの作成(18:15)、等級の確定と状態の更新(翌19:30。既存システムの株価更新のあと)
 - 手動:夜に Claude Code で `/association-daily`(30分以内)
 - 見る:`data\reports\dashboard.html`(ダッシュボード)と `data\reports\report_YYYY-MM-DD.md`(連想レポート)
 - 月1回:`/association-monthly`(振り返り)
