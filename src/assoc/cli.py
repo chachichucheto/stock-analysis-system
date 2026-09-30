@@ -117,6 +117,38 @@ def cmd_monthly(args) -> int:
     return 0
 
 
+def cmd_prices(args) -> int:
+    """株価の重ね合わせの状態確認(status)と、空白期間の補完(fill)。"""
+    from assoc.market import layered_prices as lp
+    app = _app(args)
+    if args.action == "status":
+        for row in lp.LayeredPriceSource(lp.layers_from_config(app.cfg)).status(app.today()):
+            if not row["exists"]:
+                print(f"  ✗ {row['name']}: ファイルがありません({row['path']})")
+                continue
+            print(f"  {row['name']}: {row['codes']}銘柄 / 最新 {row['max_date']}({row['stale_days']}日前)"
+                  f" / 期間 {row['min_date']}〜 / ファイル更新 {row['file_mtime']}")
+        return 0
+    if args.codes:
+        codes = [c.strip() for c in args.codes.split(",") if c.strip()]
+    elif args.all:
+        rows = app.con.execute(
+            "SELECT code FROM universe_daily WHERE date = (SELECT max(date) FROM universe_daily) "
+            "AND market LIKE '%内国株式%' ORDER BY code").fetchall()
+        codes = [r[0] for r in rows]
+    else:
+        rows = app.con.execute("SELECT DISTINCT code FROM price_copy").fetchall()
+        codes = [r[0] for r in rows]
+    codes = list(dict.fromkeys(codes + [app.topix_code()]))
+    r = lp.fill_gap(app.cfg, codes, today=app.today(), start=_date(args.start))
+    print(f"空白補完: 要求 {r['requested']}銘柄 → 取得できた {r['ok']}銘柄、"
+          f"ダウンロード {r['rows_downloaded']}行(開始日 {r['start']})")
+    print(f"  ファイル: {r['file_codes']}銘柄・{r['file_rows']}行 {r['path']}")
+    if r["empty"]:
+        print(f"  取得できなかった銘柄 {len(r['empty'])}件(先頭10件): {', '.join(r['empty'][:10])}")
+    return 0
+
+
 def cmd_pastcase(args) -> int:
     from assoc.review.past_cases import compute_all
     for line in compute_all(_app(args)):
@@ -213,6 +245,13 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--month", help="YYYY-MM(省略時は先月)")
     s.set_defaults(func=cmd_monthly)
 
+    s = sub.add_parser("prices", help="株価の重ね合わせの状態確認(status)・空白期間の補完(fill)")
+    s.add_argument("action", choices=["status", "fill"])
+    s.add_argument("--codes", help="fill の対象(カンマ区切り)。省略時は、記録に使った銘柄")
+    s.add_argument("--all", action="store_true", help="fill の対象を、上場している内国株式すべてにする(時間がかかる)")
+    s.add_argument("--start", help="fill の開始日 YYYY-MM-DD(省略時は既存の履歴の最新日の10日前)")
+    s.set_defaults(func=cmd_prices)
+
     s = sub.add_parser("pastcase", help="過去事例ライブラリの値動きを計算する")
     s.add_argument("action", choices=["compute"])
     s.set_defaults(func=cmd_pastcase)
@@ -235,6 +274,8 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")      # Windows のコンソールで文字化けしないように
+    from assoc.netfix import ensure_ascii_ca_bundle
+    ensure_ascii_ca_bundle()                          # 日本語パスの仮想環境でも yfinance が動くように
     args = build_parser().parse_args(argv)
     try:
         code = args.func(args)

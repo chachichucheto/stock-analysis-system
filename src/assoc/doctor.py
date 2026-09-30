@@ -37,6 +37,17 @@ def run_doctor(cfg: Config, online: bool = True) -> int:
             print(f"  ✗ {code} の株価が読めません(prices の設定を確認してください)")
         else:
             print(f"  ✓ {code} の株価を {len(df)} 日分読めました(最新 {df['date'].iloc[-1]})")
+        if hasattr(src, "status"):                      # 重ね合わせの場合は、各層の鮮度も見せる
+            for row in src.status(app.today()):
+                if not row["exists"]:
+                    if row["name"].startswith("連想側"):      # 空白補完は、python -m assoc prices fill で作る
+                        print(f"  △ {row['name']}: 未作成(python -m assoc prices fill で作ります)")
+                    else:
+                        ok = False
+                        print(f"  ✗ {row['name']}: ファイルがありません({row['path']})")
+                else:
+                    mark = "✓" if (row["stale_days"] is not None and row["stale_days"] <= 5) else "△"
+                    print(f"  {mark} {row['name']}: 最新 {row['max_date']}({row['stale_days']}日前)・{row['codes']}銘柄")
     except Exception as e:
         ok = False
         print(f"  ✗ {e}")

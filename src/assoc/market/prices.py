@@ -84,4 +84,7 @@ def price_source_from_config(cfg) -> PriceSource:
         return CsvDirPriceSource(Path(directory), section.get("csv_filename", "{code}.csv"))
     if kind == "yfinance_live":
         return YFinanceLivePriceSource()
+    if kind == "layered":
+        from assoc.market.layered_prices import LayeredPriceSource, layers_from_config
+        return LayeredPriceSource(layers_from_config(cfg))
     raise ValueError(f"未知の prices.source です: {kind}")

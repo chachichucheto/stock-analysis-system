@@ -7,7 +7,12 @@ paths:
 
 prices:
   # 既存の株価DBの読み方。S1 の確認結果に合わせて変更する(docs/DESIGN.md §11)
-  source: csv_dir                # csv_dir | yfinance_live
+  source: csv_dir                # csv_dir | yfinance_live | layered
+  # source: layered のとき: 既存システムの株価ファイルを読み取り専用で読み、連想側の空白補完と重ねる
+  # (詳細は docs/PROPOSAL_HYBRID_AND_SHARING.md と src/assoc/market/layered_prices.py)。
+  # layered:
+  #   tactical: C:/path/to/既存システム/cis_engine/data/tactical_universe_ohlcv.parquet   # 日次で更新されている銘柄
+  #   history:  C:/path/to/既存システム/cis_engine/data/raw/daily_ohlcv.parquet           # 全銘柄の履歴(更新が止まっていることがある)
   csv_dir: ""                    # source=csv_dir のとき、銘柄ごとの CSV が入ったフォルダ(例: D:/stock/prices)
   csv_filename: "{code}.csv"     # 例: 7203.csv。列は date, open, high, low, close, volume
   topix_code: "1306"             # TOPIX の代わりに使う ETF
