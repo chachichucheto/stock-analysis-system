@@ -41,6 +41,38 @@ collect:
     - name: Google ニュース トップ
       url: https://news.google.com/rss?hl=ja&gl=JP&ceid=JP:ja
       tier: 2
+    # ---- 2026-09-30 追加(実際に取得でき、robots.txt で許可されていることを確認した経済系フィード)----
+    # 名前は「媒体名 カテゴリ」の形にする(先頭の語が媒体名。同じ媒体の複数フィードを別媒体と数えないため)
+    - name: 東洋経済 オンライン
+      url: https://toyokeizai.net/list/feed/rss
+      tier: 2
+    - name: 朝日新聞 ビジネス
+      url: https://www.asahi.com/rss/asahi/business.rdf
+      tier: 2
+    - name: 毎日新聞 速報
+      url: https://mainichi.jp/rss/etc/mainichi-flash.rss
+      tier: 2
+    - name: 時事通信 ランキング
+      url: https://www.jiji.com/rss/ranking.rdf
+      tier: 2
+    - name: ダイヤモンド オンライン
+      url: https://diamond.jp/list/feed/rss/dol
+      tier: 3
+    - name: 日経クロステック 新着
+      url: https://xtech.nikkei.com/rss/index.rdf
+      tier: 3
+    - name: ITmedia NEWS
+      url: https://rss.itmedia.co.jp/rss/2.0/news_bursts.xml
+      tier: 3
+    - name: PRTIMES プレスリリース    # 企業自身の発表(プレスリリース)。連想の材料として有用だが宣伝色があるため tier 3
+      url: https://prtimes.jp/index.rdf
+      tier: 3
+    - name: 財務省 報道発表            # 公的機関の発表(tier 1)
+      url: https://www.mof.go.jp/news.rss
+      tier: 1
+    - name: 日本銀行 新着情報
+      url: https://www.boj.or.jp/rss/whatsnew.xml
+      tier: 1
   # 注目度の計測用のキーワード(Google News・GDELT)。THEMES.md の主なテーマから。増やしすぎると収集が遅くなる
   google_news_queries:
     - 半導体

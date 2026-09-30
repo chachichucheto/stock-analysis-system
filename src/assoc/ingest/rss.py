@@ -28,6 +28,7 @@ import feedparser
 
 from assoc.ingest.common import (
     RateLimiter,
+    log_fetch,
     news_id_from_url,
     normalize_text,
     text_hash,
@@ -87,11 +88,18 @@ def fetch_rss(cfg, con) -> int:
         float(collect.get("request_interval_sec", 1.0)),
         collect.get("user_agent", "assoc-research/0.1"),
     )
-    total = 0
+    total, failed, last_error = 0, [], None
     for feed in feeds:
         name = feed.get("name", feed.get("url", "rss"))
         tier = int(feed.get("tier", 2))
-        resp = limiter.get(feed["url"])
-        items = parse_feed(resp.content, source_name=name, tier=tier)
-        total += upsert_news_items(con, items)
+        try:
+            resp = limiter.get(feed["url"])
+            items = parse_feed(resp.content, source_name=name, tier=tier)
+            total += upsert_news_items(con, items)
+        except Exception as e:      # 1本のフィードの失敗で、残りの収集を止めない(失敗したフィード名は記録する)
+            failed.append(name)
+            last_error = e
+            log_fetch(con, f"rss:{name}", False, 0, f"{type(e).__name__}: {str(e)[:150]}")
+    if feeds and len(failed) == len(feeds):
+        raise RuntimeError(f"RSS: 全フィードで取得に失敗({len(failed)}本)") from last_error
     return total

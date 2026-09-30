@@ -135,6 +135,19 @@ def cluster(items: list[ClusterInput], *, threshold: float = 0.5) -> list[Event]
     return events
 
 
+def media_of(source: str, summary: str = "") -> str:
+    """媒体数(ニュースの大きさ)を数えるための「媒体名」を返す。
+
+    - RSS は「媒体名 カテゴリ」の形の名前(例 `NHK 国際` `朝日新聞 ビジネス`)なので、先頭の語が媒体。
+      同じ媒体の複数フィード(NHK の4本)を、別々の媒体と数えない。
+    - Google News の記事は source が検索語(`google_news:半導体`)で、実際の媒体名は要約欄にある。
+      検索語を媒体として数えると、同じ記事が複数の検索に当たっただけで水増しされる。
+    """
+    if source.startswith("google_news:"):
+        return summary.strip() or "google_news"
+    return source.split()[0] if source.split() else source
+
+
 def build_events_for_day(con, as_of: date, *, threshold: float = 0.5) -> list[Event]:
     """DB からその日(日本時間)の news_item・disclosure を読み、イベント化する。"""
     start = datetime.combine(as_of, time.min, tzinfo=JST)
@@ -147,7 +160,7 @@ def build_events_between(con, start: datetime, end: datetime, *, threshold: floa
     夕方の入力パックは「前回のパックを作った時刻から今回まで」を対象にする。日付で区切ると、
     パックを作った後の夜に取得したニュースが、どの日のパックにも入らなくなるため。"""
     news_rows = con.execute(
-        """SELECT news_id, title, source, first_observed_at
+        """SELECT news_id, title, source, first_observed_at, summary
            FROM news_item WHERE first_observed_at > ? AND first_observed_at <= ?""",
         [start, end],
     ).fetchall()
@@ -157,7 +170,7 @@ def build_events_between(con, start: datetime, end: datetime, *, threshold: floa
         [start, end],
     ).fetchall()
     items = [
-        ClusterInput(id=r[0], title=r[1] or "", kind="news", source=r[2] or "",
+        ClusterInput(id=r[0], title=r[1] or "", kind="news", source=media_of(r[2] or "", r[4] or ""),
                      first_observed_at=r[3])
         for r in news_rows
     ] + [
