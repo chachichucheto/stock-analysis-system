@@ -21,6 +21,9 @@
 - 日本語キーワードのクエリが GDELT でヒットするか(GDELT は多言語対応だが英語クエリの方が
   安定する可能性がある。必要なら英訳したキーワードを別途 config に用意する)。
 - レート制限(1秒あたりの呼び出し回数の上限)。
+  【2026-09-30 実確認】公式の目安は5秒に1回だが、6秒空けても 429 になることがある。
+  日本語キーワード(「半導体」)は接続できたが、timeline が空(0件)だった。英語キーワードは取得制限に
+  当たり確認できていない。注目度の足切りへは未配線のため、優先度は低い(docs の点検結果参照)。
 """
 from __future__ import annotations
 
@@ -70,12 +73,20 @@ def fetch_gdelt(cfg, con, keywords: list[str] | None = None) -> int:
     """
     collect = cfg.section("collect")
     kws = list(dict.fromkeys(keywords if keywords is not None else (collect.get("google_news_queries") or [])))
+    # GDELT は「5秒に1回」が公式の目安だが、実測では6秒空けても 429 になった(2026-09-30)。
+    # 余裕を持って10秒空け、1キーワードの失敗で全体を止めない(全部失敗したときだけ失敗として扱う)。
     limiter = RateLimiter(
-        float(collect.get("request_interval_sec", 1.0)), collect.get("user_agent", "assoc-research/0.1")
+        max(float(collect.get("gdelt_interval_sec", 10.0)), 5.0), collect.get("user_agent", "assoc-research/0.1")
     )
-    total = 0
+    total, failed, last_error = 0, [], None
     for kw in kws:
-        resp = limiter.get(DOC_API_URL.format(q=quote(kw)))
-        points = parse_timeline_json(resp.json(), keyword=kw)
-        total += upsert_attention(con, points)
+        try:
+            resp = limiter.get(DOC_API_URL.format(q=quote(kw)))
+            points = parse_timeline_json(resp.json(), keyword=kw)
+            total += upsert_attention(con, points)
+        except Exception as e:
+            failed.append(kw)
+            last_error = e
+    if kws and len(failed) == len(kws):
+        raise RuntimeError(f"GDELT: 全キーワードで取得に失敗({len(failed)}件)") from last_error
     return total
