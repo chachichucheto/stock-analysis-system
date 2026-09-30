@@ -18,23 +18,11 @@ if TYPE_CHECKING:
 
 CSS = """
 :root {
-  color-scheme: light;
-  --surface-0: #f4f3ef; --surface-1: #fcfcfb; --border: #dddcd6;
-  --text-primary: #0b0b0b; --text-secondary: #52514e; --text-muted: #77766f;
-  --accent: #2a78d6;
-  --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b;
-}
-@media (prefers-color-scheme: dark) {
-  :root:where(:not([data-theme="light"])) {
-    color-scheme: dark;
-    --surface-0: #111110; --surface-1: #1a1a19; --border: #383835;
-    --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #9a998f; --accent: #3987e5;
-  }
-}
-:root[data-theme="dark"] {
   color-scheme: dark;
   --surface-0: #111110; --surface-1: #1a1a19; --border: #383835;
-  --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #9a998f; --accent: #3987e5;
+  --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #9a998f;
+  --accent: #3987e5;
+  --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b;
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--surface-0); color: var(--text-primary);
@@ -323,4 +311,34 @@ def build_dashboard(app: "App", day: date | None = None) -> Path:
 """
     path = app.dir("reports") / "dashboard.html"
     path.write_text(html, encoding="utf-8")
+    _mirror_to_existing(app, html, path.parent, report_link)
     return path
+
+
+MIRROR_NAME = "モデル⑧ニュース連想.html"
+
+
+def _mirror_to_existing(app: "App", html: str, out_dir: Path, report_link: str | None) -> None:
+    """既存システムの dashboard フォルダにも同じページを置く(そこから開けるように)。
+
+    書くのはこの1ファイルだけ。上部ナビと、レポートへのリンクは、置き先からの相対パスに直す。
+    置き先が無い・書けないときは、何もしない(本体の dashboard.html は作れている)。
+    """
+    import os
+    from urllib.parse import quote
+
+    directory = app.cfg.raw.get("paths", {}).get("existing_dashboards") or ""
+    if not directory or not Path(directory).is_dir():
+        return
+    target_dir = Path(directory)
+    try:
+        nav_old = _site_nav(app, out_dir)
+        nav_new = _site_nav(app, target_dir).replace(
+            f'<a href="{quote(MIRROR_NAME, safe="/")}">{_e(Path(MIRROR_NAME).stem)}</a>', "")
+        out = html.replace(nav_old, nav_new)
+        if report_link:
+            rel = quote(Path(os.path.relpath(out_dir / report_link, target_dir)).as_posix(), safe="/")
+            out = out.replace(f'href="{_e(report_link)}"', f'href="{rel}"')
+        (target_dir / MIRROR_NAME).write_text(out, encoding="utf-8")
+    except OSError:
+        pass
