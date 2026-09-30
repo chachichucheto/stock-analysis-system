@@ -33,6 +33,7 @@
 from __future__ import annotations
 
 import io
+import re
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -91,14 +92,56 @@ def parse_universe_excel(raw: bytes | str | Path, *, source_name: str = "data_j.
     return rows
 
 
+_SUPERVISION_HEADING_RE = re.compile(r"^\s*(監理銘柄|整理銘柄)")
+
+
+def parse_monitoring_page(html: str) -> dict[str, str]:
+    """JPX「監理・整理銘柄一覧(株式)」のページから、コード→区分('監理'|'整理')の辞書を作る(純関数)。
+
+    ページには表が3つ(監理銘柄(確認中)・監理銘柄(審査中)・整理銘柄)あり、各表の直前の見出しで区別する
+    (2026-09-30 に実ページで確認。列は 指定年月日/銘柄名/コード/市場区分/詳細/備考)。
+    """
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(html, "lxml")
+    result: dict[str, str] = {}
+    for table in soup.find_all("table"):
+        kind = None
+        for prev in table.find_all_previous(["h1", "h2", "h3", "h4", "h5", "p", "table"], limit=8):
+            if prev.name == "table":       # 間に別の表があれば、その先の見出しは別の表のもの
+                break
+            m = _SUPERVISION_HEADING_RE.match(prev.get_text(" ", strip=True))
+            if m:
+                kind = "監理" if m.group(1) == "監理銘柄" else "整理"
+                break
+        if kind is None:
+            continue
+        for tr in table.find_all("tr"):
+            cells = [c.get_text(" ", strip=True) for c in tr.find_all(["td"])]
+            if len(cells) < 3:
+                continue
+            code = cells[2].strip()
+            if len(code) == 4 and code.isalnum():
+                # 整理は監理より進んだ段階なので、両方に載る銘柄は「整理」を優先する
+                if result.get(code) != "整理":
+                    result[code] = kind
+    return result
+
+
 def fetch_monitoring_posts(cfg) -> dict[str, str]:
     """監理・整理ポストの銘柄コード→区分('監理'|'整理')の辞書を返す。
 
-    TODO: JPX の公表ページの URL・形式が未確認のため未実装。実装できるまでは常に空を返し、
-    universe_daily の status はすべて「通常」になる(docs/DESIGN.md §8.1 の除外条件のうち
-    監理・整理ポストの判定は、実装されるまで機能しない)。
+    URL は config の collect.jpx_supervision_url。未設定なら空(=すべて「通常」扱い)を返す。
     """
-    return {}
+    collect = cfg.section("collect")
+    url = collect.get("jpx_supervision_url")
+    if not url:
+        return {}
+    limiter = RateLimiter(
+        float(collect.get("request_interval_sec", 1.0)), collect.get("user_agent", "assoc-research/0.1")
+    )
+    resp = limiter.get(url)
+    return parse_monitoring_page(resp.content.decode("utf-8", errors="replace"))
 
 
 def upsert_universe(con, rows: list[UniverseRow], as_of: date, first_observed_at=None) -> int:
@@ -136,7 +179,11 @@ def fetch_universe(cfg, con, url: str | None = None, as_of: date | None = None) 
     resp = limiter.get(url)
     rows = parse_universe_excel(resp.content, source_name=url)
     saved = upsert_universe(con, rows, as_of)
-    posts = fetch_monitoring_posts(cfg)
+    try:
+        posts = fetch_monitoring_posts(cfg)
+    except Exception as e:      # 監理・整理の取得に失敗しても、銘柄一覧の保存は失わない(失敗は記録する)
+        log_fetch(con, "jpx_supervision", False, 0, f"{type(e).__name__}: {str(e)[:200]}")
+        posts = {}
     if posts:
         for code, status in posts.items():
             con.execute(
