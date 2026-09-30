@@ -14,10 +14,11 @@ def test_decode_tdnet_html_handles_utf8():
 def test_parse_list_page_extracts_rows():
     html = decode_tdnet_html(fixture_bytes("tdnet_list_sample.html"))
     items = parse_list_page(html, list_date=date(2026, 9, 25))
-    assert len(items) == 3
+    assert len(items) == 4
     first = items[0]
-    assert first.code == "13010"
-    assert first.company_name == "サンプル物産株式会社"
+    assert first.code == "1301"                      # 5桁(末尾は検査用の0)を4桁に直す
+    assert items[3].code == "285A"                   # 新形式(英字入り)も同様
+    assert first.company_name == "サンプル物産株式会社"   # 末尾の空白は除く
     assert "大量保有報告書" in first.title
     assert first.url.endswith("140120260925500001.pdf")
     assert first.source == "tdnet"
@@ -25,12 +26,21 @@ def test_parse_list_page_extracts_rows():
     assert first.published_at.hour == 15 and first.published_at.minute == 0
 
 
+def test_normalize_tdnet_code_handles_etf_and_4digit():
+    from assoc.ingest.tdnet import normalize_tdnet_code
+
+    assert normalize_tdnet_code("30380") == "3038"
+    assert normalize_tdnet_code("15574") == "1557"     # ETF は5桁目が0でない
+    assert normalize_tdnet_code("3038") == "3038"      # 4桁はそのまま
+    assert normalize_tdnet_code("") == ""
+
+
 def test_parse_list_page_disclosure_id_is_stable():
     html = decode_tdnet_html(fixture_bytes("tdnet_list_sample.html"))
     items1 = parse_list_page(html, list_date=date(2026, 9, 25))
     items2 = parse_list_page(html, list_date=date(2026, 9, 25))
     assert items1[0].disclosure_id == items2[0].disclosure_id
-    assert len({i.disclosure_id for i in items1}) == 3  # 重複なし
+    assert len({i.disclosure_id for i in items1}) == 4  # 重複なし
 
 
 def test_parse_list_page_empty_returns_empty_list():

@@ -7,16 +7,17 @@
 - 一覧ページ:`https://www.release.tdnet.info/inbs/I_list_{page:03d}_{YYYYMMDD}.html`
   (1ページ目が `I_list_001_YYYYMMDD.html`、以降ページ送り)。当日分が存在しない、または
   ページ数を超えると 404、もしくは行数0のページが返る想定。
-- 文字コードは Shift_JIS(cp932)を想定(TDnet の古くからの仕様)。UTF-8 化されている
-  可能性もあるため、`<meta charset>` を見てから cp932 にフォールバックする。
-- 一覧はテーブル(`<tr>` の並び)で、各行が1件の開示。列は概ね次の構成
-  (実際のクラス名は開発時点の記憶によるもので確認が要る):
+- 文字コードは UTF-8(2026-09-30 に実ページで確認。`<meta charset="UTF-8">`)。念のため
+  cp932 にフォールバックする。
+- 一覧はテーブル(`<tr>` の並び)で、各行が1件の開示。列は次の構成(2026-09-30 に実ページで確認)。
+  **class 属性は2語**(例 `class="oddnew-M kjCode"`。行の色分け用の語+列名)なので、
+  `kj` で始まる語を列名として使う:
   - `kjTime` 開示時刻(HH:MM、日本時間)
-  - `kjCode` 銘柄コード(4桁、まれに5桁)
-  - `kjName` 会社名
+  - `kjCode` 銘柄コード(**5桁**。証券コード4桁+検査用の0。例 `30380` `285A0`)→ 4桁に直して保存
+  - `kjName` 会社名(末尾に空白が入る)
   - `kjTitle` 開示タイトル(`<a href="...">` で PDF へのリンク。相対パス)
-  - `kjPlace` 上場市場
-  - `kjHistroy`(原文ママの綴りだった記憶がある)訂正・番号の履歴
+  - `kjXbrl` XBRL の有無 / `kjPlace` 上場市場
+  - `kjHistroy`(原文ママの綴り)訂正・番号の履歴
 - PDF の相対 URL は `https://www.release.tdnet.info/inbs/` を前置して絶対 URL にする。
 
 ローカルで最初に確認すべき点
@@ -75,13 +76,33 @@ class _Row:
     href: str
 
 
+def _kj_class(cls: str) -> str:
+    """class 属性(例:`oddnew-M kjCode`)から、列名(`kj` で始まる語)を取り出す。無ければ空文字。"""
+    for word in cls.split():
+        if word.startswith("kj"):
+            return word
+    return ""
+
+
+def normalize_tdnet_code(code: str) -> str:
+    """TDnet の5桁コード(証券コード4桁+1桁。例 `30380` `285A0`)を4桁にする。
+
+    5桁目は普通株では0だが、ETF・ETN では4など0以外もある(2026-09-30 に実データで確認)。
+    EDINET の secCode と同じく、5桁なら先頭4桁を証券コードとして扱う。
+    """
+    code = code.strip()
+    if len(code) == 5:
+        return code[:4]
+    return code
+
+
 def _parse_row(row_html: str) -> _Row | None:
-    cells = {cls.split()[0]: _strip_tags(body) for cls, body in _TD_RE.findall(row_html)}
+    cells = {_kj_class(cls): _strip_tags(body) for cls, body in _TD_RE.findall(row_html)}
     if "kjName" not in cells or "kjCode" not in cells:
         return None
     title_html = ""
     for cls, body in _TD_RE.findall(row_html):
-        if cls.split()[0] == "kjTitle":
+        if _kj_class(cls) == "kjTitle":
             title_html = body
             break
     href, title_text = "", cells.get("kjTitle", "")
@@ -91,7 +112,7 @@ def _parse_row(row_html: str) -> _Row | None:
         title_text = _strip_tags(m.group(2))
     return _Row(
         time_text=cells.get("kjTime", ""),
-        code=cells.get("kjCode", "").strip(),
+        code=normalize_tdnet_code(cells.get("kjCode", "")),
         company_name=cells.get("kjName", "").strip(),
         title=title_text,
         href=href,
