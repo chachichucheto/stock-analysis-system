@@ -203,5 +203,12 @@ powershell -ExecutionPolicy Bypass -File scripts\windows\register_tasks.ps1   # 
 | `python -m assoc watch [--dry-run]` | 本命・監視の銘柄に、新しい材料(開示・ニュース・決算日の接近)があるかを点検する |
 | `python -m assoc export` | 共有棚(`data\shared\`)を更新する。収集・パック作成・翌日の処理のあとに自動で実行される |
 
+**継続性チェック**(`nextday` で毎日自動実行):本命と進行中の候補について、TOPIX 超過の維持・ピークからの押し戻し・売買代金の関心・新しい材料の有無・悪材料の語・停滞を数え、
+🟢継続 / 🟡注意 / 🔴劣化 / 🔵織り込み進行 / ⚪終了 を記録する(`health_snapshot`、追記専用)。レポート・ダッシュボード・入力パック(`health`)に載る。
+「注意」「劣化」になった銘柄だけが、夜の深掘りの対象。閾値は暫定(`config.Thresholds.health_*`)で、記録を積んで「劣化」判定の当たりを検証する。
+
+**ダッシュボードの共通ナビゲーション**:連想ダッシュボード(`data\reports\dashboard.html`)の上部に、既存システムの各ダッシュボードへのリンクが並ぶ
+(`paths.existing_dashboards` の設定で決まる。読み取りのみ)。既存側のナビゲーションから連想モデルへ移るリンクは、既存の `dashboard_common.py` に1行追加する。
+
 **共有棚**:他のシステムが、連想側の収集結果(ニュース・開示・銘柄一覧・決算予定日)を、Parquet で読み取り専用に使うための出力。
 過去の日のファイルは書き換えない。`manifest.json` の `generated_at` で鮮度を確認する。既存システム側の変更は、承認を得てから行う。
