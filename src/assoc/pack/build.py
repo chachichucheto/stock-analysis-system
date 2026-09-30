@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any
 import yaml
 
 from assoc.config import REPO_ROOT
-from assoc.events.cluster import build_events_between, extract_entities
+from assoc.events.cluster import build_events_between, extract_entities, media_of
 from assoc.events.gate import GateInput, gate_events
 from assoc.state import latest_by, load_scenarios
 from assoc.timeutil import JST, parse_iso, to_iso, utcnow
@@ -107,11 +107,17 @@ def build_pack(app: "App", day: date) -> Path:
                                         "attention_high": attention_high, "novelty_hash": ev.novelty_hash,
                                         "title": ev.title})
         if r.passed:
-            urls = [row[0] for row in app.con.execute(
-                "SELECT url FROM news_item WHERE news_id IN (SELECT unnest(?)) "
-                "UNION ALL SELECT url FROM disclosure WHERE disclosure_id IN (SELECT unnest(?))",
-                [ev.news_ids, ev.disclosure_ids]).fetchall()]
-            pack_events.append({"event_id": ev.event_id, "title": ev.title, "urls": urls[:10],
+            rows = app.con.execute(
+                "SELECT url, source, summary FROM news_item WHERE news_id IN (SELECT unnest(?)) "
+                "UNION ALL SELECT url, source, '' FROM disclosure WHERE disclosure_id IN (SELECT unnest(?))",
+                [ev.news_ids, ev.disclosure_ids]).fetchall()
+            # Google News のリンクは中継 URL で直接開けないことが多い(2026-09-30 予行演習)。
+            # 直接開ける URL(NHK・TDnet など)を先に並べ、媒体名も付けて、裏取りの手間を減らす。
+            direct = [u for u, _s, _m in rows if "news.google.com" not in u]
+            wrapped = [u for u, _s, _m in rows if "news.google.com" in u]
+            media = sorted({media_of(s or "", m or "") for _u, s, m in rows} - {""})
+            urls = direct + wrapped
+            pack_events.append({"event_id": ev.event_id, "title": ev.title, "urls": urls[:10], "media": media[:12],
                                 "first_observed_at": to_iso(ev.first_observed_at), "media_count": ev.media_count,
                                 "disclosure_type": ev.disclosure_type, "codes": ev.codes,
                                 "gate_reason": r.reason, "forced_in": r.forced_in,

@@ -7,7 +7,10 @@
 ただし
   (d) novelty_hash が過去に記録済みなら、(a)〜(c)を満たしても落とす(新規性なし)
 
-通過分は注目度の合成スコアの順に最大 `Thresholds.gate_max_events` 件。
+通過分は、ニュースは注目度の合成スコアの順に最大 `Thresholds.gate_max_events` 件、
+開示(TDnet・EDINET)は別枠で、種類の優先度(TOB > 提携 > 業績予想の修正 > 大量保有)→注目度の順に
+最大 `Thresholds.gate_max_disclosure_events` 件(2026-09-30 追加。ニュースと同じ枠で競わせると、
+媒体数の少ない開示が構造的に負けるため)。
 **進行中シナリオの対象企業(銘柄コード)やキーワードに一致するものは、この上限の枠外で通す**
 (`forced_in=True`)。落としたものも理由付きで返す(記録は呼び出し側=統括者が行う)。
 """
@@ -163,17 +166,40 @@ def gate_events(
                 attention=attention, forced_in=False,
             )
 
-    # 別枠(forced_in)以外は、注目度の合成スコアの順に上限件数まで。超えた分は理由を書き換えて落とす。
-    passed_not_forced.sort(key=lambda t: (t[1], t[0].media_count), reverse=True)
-    for e, _score in passed_not_forced[thresholds.gate_max_events :]:
-        prev = results[e.event_id]
-        results[e.event_id] = GateResult(
-            event_id=e.event_id, passed=False,
-            reason=f"{prev.reason}(上限 {thresholds.gate_max_events} 件を超過)",
-            attention=prev.attention, forced_in=False,
-        )
+    # 別枠(forced_in)以外は、ニュースと開示それぞれ別の上限件数まで。超えた分は理由を書き換えて落とす。
+    # (開示は媒体数が1になりやすく、ニュースと同じ枠で注目度を競うと構造的に負けるため、枠を分ける)
+    news = [t for t in passed_not_forced if not t[0].disclosure_type]
+    disclosures = [t for t in passed_not_forced if t[0].disclosure_type]
+    news.sort(key=lambda t: (t[1], t[0].media_count), reverse=True)
+    disclosures.sort(key=lambda t: (disclosure_priority(t[0].title), t[1], t[0].media_count), reverse=True)
+    max_disclosure = getattr(thresholds, "gate_max_disclosure_events", thresholds.gate_max_events)
+    for group, limit, label in ((news, thresholds.gate_max_events, ""), (disclosures, max_disclosure, "開示の")):
+        for e, _score in group[limit:]:
+            prev = results[e.event_id]
+            results[e.event_id] = GateResult(
+                event_id=e.event_id, passed=False,
+                reason=f"{prev.reason}({label}上限 {limit} 件を超過)",
+                attention=prev.attention, forced_in=False,
+            )
 
     return [results[e.event_id] for e in events]
+
+
+# 開示の優先度(暫定。株価への影響が大きく、他で代替しにくい順)。タイトルの文言で判定する。
+_DISCLOSURE_PRIORITY = (
+    (4, ("公開買付", "TOB")),
+    (3, ("資本業務提携", "業務提携")),
+    (2, ("業績予想の修正", "業績予想を修正", "上方修正", "下方修正")),
+    (1, ("大量保有報告書", "変更報告書")),
+)
+
+
+def disclosure_priority(title: str) -> int:
+    t = title or ""
+    for score, words in _DISCLOSURE_PRIORITY:
+        if any(w in t for w in words):
+            return score
+    return 0
 
 
 def _condition_reason(meets_attention: bool, meets_growth: bool, meets_strong: bool) -> str:

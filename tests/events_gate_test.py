@@ -82,6 +82,31 @@ def test_gate_enforces_max_events_limit_by_score_order():
     assert "上限" in by_id["e0"].reason
 
 
+def test_disclosures_have_their_own_quota_and_priority():
+    thresholds = Thresholds()
+    hist = _history()
+    news = [GateInput(event_id=f"n{i}", title=f"ニュース{i}", novelty_hash=f"hn{i}",
+                       media_count=97 + i, gdelt=97 + i, wiki=97 + i) for i in range(5)]
+    disclosures = [
+        GateInput(event_id="d_tob", title="株式会社Aに対する公開買付けの開始に関するお知らせ", novelty_hash="h1",
+                  media_count=1, disclosure_type="disclosure", codes=["1111"]),
+        GateInput(event_id="d_rev", title="業績予想の修正に関するお知らせ", novelty_hash="h2",
+                  media_count=1, disclosure_type="disclosure", codes=["2222"]),
+        GateInput(event_id="d_large", title="大量保有報告書の提出に関するお知らせ", novelty_hash="h3",
+                  media_count=1, disclosure_type="disclosure", codes=["3333"]),
+        GateInput(event_id="d_tie", title="資本業務提携に関するお知らせ", novelty_hash="h4",
+                  media_count=1, disclosure_type="disclosure", codes=["4444"]),
+    ]
+    results = gate_events(news + disclosures, thresholds, media_history=hist, gdelt_history=hist, wiki_history=hist)
+    by_id = {r.event_id: r for r in results}
+    passed_news = [i for i in ("n0", "n1", "n2", "n3", "n4") if by_id[i].passed]
+    passed_disc = [i for i in ("d_tob", "d_rev", "d_large", "d_tie") if by_id[i].passed]
+    assert len(passed_news) == thresholds.gate_max_events            # ニュースは3件
+    assert len(passed_disc) == thresholds.gate_max_disclosure_events  # 開示も別枠で3件(ニュースに負けない)
+    assert set(passed_disc) == {"d_tob", "d_tie", "d_rev"}            # TOB > 提携 > 業績予想 > 大量保有
+    assert "開示の上限" in by_id["d_large"].reason
+
+
 def test_gate_forced_in_bypasses_max_events_limit():
     thresholds = Thresholds()
     hist = _history()
