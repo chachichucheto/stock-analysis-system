@@ -8,7 +8,11 @@
 |---|---|
 | [docs/CONCEPT.md](docs/CONCEPT.md) | 何を・なぜ作るか(最上位) |
 | [docs/DESIGN.md](docs/DESIGN.md) | どう作るか |
-| [docs/HANDOFF.md](docs/HANDOFF.md) | Windows での導入・毎日の使い方・バックアップ |
+| **[docs/HANDOFF_20261001.md](docs/HANDOFF_20261001.md)** | **作業書(別セッションへの引き継ぎ)。最初に読む。現在地・今後の作業・罠** |
+| [docs/NEXT_SESSION_PROMPT.md](docs/NEXT_SESSION_PROMPT.md) | 次のセッションの起動プロンプト |
+| [docs/HANDOFF.md](docs/HANDOFF.md) | Windows での導入・毎日の使い方・バックアップ・コマンド一覧 |
+| [docs/S1_REPORT.md](docs/S1_REPORT.md) | 既存システムの資産の確認結果 |
+| [docs/PROPOSAL_HYBRID_AND_SHARING.md](docs/PROPOSAL_HYBRID_AND_SHARING.md) | ハイブリッド調査と、既存システムとのデータ共有の設計案 |
 | [docs/LOCAL_KICKOFF.md](docs/LOCAL_KICKOFF.md) | ローカルの Claude Code への作業指示書 |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | 決定の記録 |
 | [docs/THEMES.md](docs/THEMES.md) | テーマの一覧 |

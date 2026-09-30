@@ -1,6 +1,7 @@
-# ニュース連想モデル 設計書 v1.1
+# ニュース連想モデル 設計書 v1.2
 
-- ステータス: **設計確定(コード未着手)**。2026-09-25
+- ステータス: **実装済み・ローカルで稼働開始前**(2026-10-01)。v1.1(2026-09-25、コード未着手)からの変更は **§15** に記載。§10〜§12 は実態に合わせて更新済み
+- 引き継ぎ: 現在地・今後の作業は `HANDOFF_20261001.md`(作業書)を先に読むこと
 - 位置づけ: `CONCEPT.md` v2.0 を**どう作るか**を定める。何を・なぜ作るかは `CONCEPT.md` を正とする
 - 旧版(v0.3)からの主な変更は付録Aに記載する。旧版は git の履歴に残っている
 
@@ -362,32 +363,41 @@ LLM に渡す JSON には、次をまとめる。
 
 ---
 
-## 10. ディレクトリ構成(案)
+## 10. ディレクトリ構成(実態。2026-10-01)
+
+リポジトリは `C:\Users\chach\OneDrive\Desktop\クロード連想モデル`(既存システムとは**別フォルダ**。既存の `CLAUDE.md` が自動で読み込まれるのを避けるため)。
 
 ```
-association-model/
-├── docs/                  CONCEPT / DESIGN / DECISIONS / THEMES / ANALYSIS_PLAN
-├── config/                RSS の一覧、パス(既存の株価DBの場所など)、閾値
-├── schemas/               JSON スキーマ
-├── prompts/               指示文(版管理)
+クロード連想モデル/
+├── docs/                  CONCEPT / DESIGN / DECISIONS / THEMES / ANALYSIS_PLAN / HANDOFF / HANDOFF_20261001(作業書) /
+│                          PROPOSAL_HYBRID_AND_SHARING / S1_REPORT / NEXT_SESSION_PROMPT
+├── config/                config.example.yaml(git 管理)/ config.yaml(git 管理外。パス・URL・キー)
+├── schemas/               JSON スキーマ(daily_output / monthly_output)
+├── prompts/               指示文(daily-v1 / monthly-v1)
 ├── .claude/commands/      association-daily / association-monthly
-├── knowledge/             前提カード、過去事例ライブラリ、指標ライブラリ(git 管理)
-├── src/
-│   ├── ingest/            収集
-│   ├── events/            イベント化・足切り
-│   ├── market/            株価の計算(既存DBの読み取り)、1段目の反応、売買の目安
-│   ├── master/            銘柄マスタ、別名辞書、上場銘柄一覧、カレンダー、除外条件
-│   ├── pack/              入力パック
+├── knowledge/             過去事例ライブラリ(PC0001〜PC0030)、別名辞書 aliases.yaml
+├── scripts/windows/       setup.ps1 / register_tasks.ps1 / run.ps1
+├── src/assoc/
+│   ├── ingest/            収集(rss, google_news, tdnet, edinet, gdelt, wikipedia)
+│   ├── master/            上場銘柄一覧+監理・整理(universe.py)、決算発表予定日(calendar.py)、社名照合(names.py)
+│   ├── market/            株価(prices.py, layered_prices.py)、指標(indicators.py)
+│   ├── events/            イベント化(cluster.py)・足切り(gate.py)
+│   ├── pack/              入力パック(build.py)
 │   ├── commit/            検証・照合・確定
-│   ├── scoring/           鮮度・織り込み度・診断・自信度・本命
-│   ├── tracking/          等級の確定、状態の更新、売りのサイン、「動いた」の判定
-│   ├── review/            月次の集計
-│   └── report/            O1・O2・O3 の出力
-├── tests/
-└── data/                  ← .gitignore(DB、生データ、レポート)
-    ├── inbox/             LLM の出力
-    ├── records/           追記専用の記録(別途バックアップ)
-    └── export/            O3 連携ファイル
+│   ├── scoring/ pipeline/ 鮮度・織り込み度・自信度・本命の選定(evaluate.py)
+│   ├── tracking/          等級の確定、売りのサイン、「動いた」、継続性チェック(health.py)
+│   ├── review/            月次の集計、過去事例の計算
+│   ├── report/ dashboard/ O1・O3、ダッシュボード
+│   ├── watch.py           候補ウォッチ / shared_export.py 共有棚 / netfix.py 日本語パス対策
+│   └── app.py cli.py      処理のまとまりとコマンド
+├── tests/                 pytest(208件)
+└── data/                  ← .gitignore
+    ├── assoc.duckdb       収集データ(ニュース・開示・銘柄一覧・決算予定日・株価の記録)
+    ├── records/           追記専用の記録(バックアップ対象。ハッシュの鎖)
+    ├── packs/ inbox/ reports/ export/ watch/   夜の手順の入出力
+    ├── prices_gap/        連想側の株価の空白補完(parquet)
+    ├── shared/            共有棚(他のシステムが読み取り専用で使う。manifest.json つき)
+    └── logs/              自動実行のログ
 ```
 
 ---
@@ -428,16 +438,18 @@ association-model/
 
 ---
 
-## 12. 未決事項
+## 12. 未決事項(2026-10-01 更新)
 
-| # | 論点 | 選択肢 | 決める時期 |
-|---|---|---|---|
-| 1 | リポジトリ | このリポジトリで開発するか、既存システムのリポジトリに同居させるか | S1 の確認後 |
-| 2 | 流動性の下限 | **3億円に決定**(2026-09-25) | 済 |
-| 3 | ★の閾値 | サンプル出力を見て決める | S2-d |
-| 4 | バックアップ先 | クラウドストレージの種類 | S2-b |
-| 5 | テーマの参考サイトの自動取得 | 利用規約しだい | S1 |
-| 6 | 決算発表の予定の取得元 | 無料で安定して取れる情報源 | S2-a |
+| # | 論点 | 状態 |
+|---|---|---|
+| 1 | リポジトリ | **決定**:別フォルダ・別リポジトリ(D34)。既存システムの `dashboard_common.py` に、連想モデルへのリンクを1行だけ足した(承認済み・コミット済み) |
+| 2 | 流動性の下限 | **3億円に決定**(2026-09-25) |
+| 3 | ★の閾値 | 未決。実運用のサンプルが出てから(S2-d) |
+| 4 | バックアップ先 | **決定**:ユーザーが USB へ手動で複製する(OneDrive の同期は切ってある)。自動の複製先は未設定(`paths.backup_dir` は空) |
+| 5 | テーマの参考サイトの自動取得 | 未確認(S1_REPORT の未確認項目) |
+| 6 | 決算発表の予定の取得元 | **決定**:JPX の月別 Excel(約1か月先まで)。それより先は推定(未実装) |
+| 7 | ニュース収集の統合(既存側の毎朝の調査との集約) | 未決。連想側が大元、既存側は読み取り専用、が前提。最後に相談(承認後) |
+| 8 | 分析計画の定義の食い違い(先行性・1段目だけの的中率・偶然の的中率) | **確定前に直す必要あり**(HANDOFF_20261001 の P1) |
 
 ---
 
@@ -466,6 +478,55 @@ association-model/
 - 銘柄コードと社名の照合をせずに候補を確定すること
 - 既存システムのコード・データの変更や上書き
 - 件数を推測で書くこと
+
+---
+
+## 15. ローカル化後の追加設計(2026-10-01。DECISIONS D34)
+
+### 15.1 株価:既存システムのファイルを読み取り専用で重ねる(`market/layered_prices.py`)
+- 前提(2026-09-30 に既存側を読み取りで確認):既存の全銘柄日足 `cis_engine/data/raw/daily_ohlcv.parquet` は 2004-07〜**2026-07-24 で更新停止**。日次で更新されているのは `tactical_universe_ohlcv.parquet`(555銘柄、6/2〜)だけ。**7/25以降の全銘柄は誰も取得していない**。
+- 2つの既存ファイルは、重なる期間で終値が食い違う(555銘柄中185銘柄。分割調整の違い)。7082 のように壊れた値もある。
+- 層(新しい順):既存・日次555銘柄 → 連想側・空白補完(`data/prices_gap/`、yfinance を調整なしで取得) → 既存・全銘柄履歴。
+- **つなぎ目の補正**:重なった日の終値の比(中央値)で古い側の倍率をそろえる。比が安定しない(最大/最小>1.10)、または重なりが無くつなぎ目の変化が35%超なら、古い側は使わず警告する。
+- **品質ゲート**:株価が500万円超・0以下・欠損の行を捨てる。
+- **古い株価は「今の株価」として返さない**:直近の評価で最新日が10日以上前なら、その銘柄だけ自動補完し、それでも古ければ「データなし」(呼び出し側で除外)。
+- `assoc prices status`(鮮度の確認)/ `assoc prices fill [--codes|--all]`(補完)。日本語パスの仮想環境で yfinance が SSL エラーになる問題は `netfix.py` が自動で対処する(証明書を ASCII パスへコピー)。
+
+### 15.2 足切り:開示を別枠にする(`events/gate.py`)
+- ニュースは注目度(媒体数)の順に最大3件、**開示(TDnet・EDINET)は別枠で最大3件**(`gate_max_disclosure_events`)。開示は種類の優先度(TOB > 提携 > 業績予想の修正 > 大量保有)→注目度の順(暫定)。
+- 媒体数は「媒体名」で数える(`events/cluster.py: media_of`。NHK の4フィードは1媒体、Google News は実際の媒体名)。
+
+### 15.3 入力パックの追加項目(`pack/build.py`)
+- `events[].media`(報じた媒体名)、`events[].urls`(直接開ける URL を先頭に。Google News の中継 URL は後ろ)
+- `watch`:候補ウォッチの結果(§15.4)
+- `health`:継続性チェックで「注意」「劣化」になった・状態が変わった銘柄(§15.5)
+
+### 15.4 候補ウォッチ(`watch.py`、`assoc watch`)
+本命と進行中シナリオの候補だけを対象に、前回の点検以降の新しい材料(その銘柄の開示・見出しに社名/コードを含むニュース・7日以内の決算)を Python で数える。**トークンは使わない**。`new_material=true` の銘柄だけを夜の深掘りの対象にする(材料が無い銘柄は調べ直さない)。夜の検索の予算は、新シナリオの裏取り15回・ウォッチ/ヘルスの銘柄10回・予備5回(`prompts/daily-v1.md` 手順2.5)。
+
+### 15.5 継続性チェック(`tracking/health.py`、`nextday` で毎日)
+選んだ銘柄の期待が「続いているか」を、Python だけで毎日判定し `health_snapshot`(追記専用)に記録する。売りのサイン(出口の合図)より手前の「期待の健康状態」。
+- 見る項目:TOPIX 超過の維持・直近5日の向き・ピークからの押し戻し/売買代金(5日÷20日)/新しい材料の有無/悪材料の語を含む見出し(要確認の目印)/停滞(期間の4割経過で織り込み・材料とも止まる)/シナリオの弱体化・終了
+- 状態(優先順):終了 > 劣化 > 織り込み進行 > 注意 > 継続
+- 閾値は暫定(`config.Thresholds.health_*`)。**記録を積んで、「劣化」判定が実際の失敗を先に示していたかを検証する**(検証前は判断の補助であり、評価指標には入れない)。
+- 起動前(待機)のシナリオは対象外。本命にしてから60営業日で追跡を終える。
+
+### 15.6 共有棚(`shared_export.py`、`assoc export`)
+他のシステムが連想側の収集結果を**読み取り専用**で使うための出力(`data/shared/`)。ニュース・開示は日ごとの Parquet、銘柄一覧(監理・整理つき)・決算予定日、`manifest.json`(作成時刻・行数・列の定義・規則)。過去の日のファイルは書き換えない(今日と昨日だけ書き直す)。DuckDB 本体は共有しない。収集・パック作成・翌日の処理のあとに自動で更新される。
+
+### 15.7 ダッシュボード(`dashboard/build.py`)
+上部に、既存システムの各ダッシュボードへの共通ナビゲーション(`paths.existing_dashboards` のフォルダから作る。旧モデルのページは除く)。「継続性チェック」の節を追加。既存側のナビゲーションには、連想モデルへのリンクを1行追加した(`dashboard_common.py`)。
+
+### 15.8 データ元の実態(2026-09-30 に実データで確認)
+| データ元 | 実態 |
+|---|---|
+| TDnet | 一覧の `class` は2語(`oddnew-M kjCode`)→ `kj` で始まる語を列名にする。銘柄コードは5桁(4桁+1桁)→ 先頭4桁 |
+| JPX 上場銘柄一覧 | `.../tvdivq0000001vg2-att/data_j.xlsx`(拡張子は .xlsx)。4,441行。市場区分に ETF・REIT・PRO Market を含む |
+| JPX 監理・整理 | `listing/market-alerts/supervision/index.html` のページ内の3つの表(監理確認中・監理審査中・整理) |
+| JPX 決算発表予定日 | `listing/event-schedules/financial-announcement/index.html` に月別 Excel(`kessan08_0918.xlsx` など。ファイル名は更新で変わる)。約1か月先まで |
+| EDINET | キーは `.env` の `EDINET_API_KEY`(または config.yaml)。エラー文にキーが出ないようにしてある |
+| RSS | NHK 4本・Yahoo!・Google トップに加え、東洋経済・朝日・毎日・時事・ダイヤモンド・日経クロステック・ITmedia・PR TIMES・財務省・日銀(いずれも robots.txt で許可を確認) |
+| GDELT | 取得制限(429)が続く。日本語キーワードは timeline が空。注目度の足切りへ未配線のため優先度は低い |
 
 ---
 
