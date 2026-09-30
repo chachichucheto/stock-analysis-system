@@ -232,7 +232,11 @@ def history_last_date(cfg) -> date | None:
     return pd.Timestamp(hi).date() if hi is not None else None
 
 
-def _download_chunk(symbols: list[str], start: date, end: date, retries: int = 4) -> pd.DataFrame:
+def _download_chunk(symbols: list[str], start: date, end: date, retries: int = 2) -> pd.DataFrame:
+    """yfinance から調整なしで取得する。失敗・空のときは短い待ちで最大 retries 回やり直す。
+
+    上場廃止などで本当にデータが無い銘柄でも、待ち時間は数秒に収める(ランキングの計算中に、
+    1銘柄ごとに長く待たせないため)。"""
     import yfinance as yf
 
     for attempt in range(retries):
@@ -243,7 +247,8 @@ def _download_chunk(symbols: list[str], start: date, end: date, retries: int = 4
                 return df
         except Exception:
             pass
-        time.sleep(5 * (2 ** attempt))                  # レート制限には指数バックオフ
+        if attempt + 1 < retries:
+            time.sleep(3 * (3 ** attempt))              # 3秒 → 9秒(レート制限への簡易バックオフ)
     return pd.DataFrame()
 
 
@@ -273,6 +278,9 @@ def fill_gap(cfg, codes: list[str], *, today: date, start: date | None = None,
     既存システムのファイルには書き込まない。
     """
     import duckdb
+
+    from assoc.netfix import ensure_ascii_ca_bundle
+    ensure_ascii_ca_bundle()                            # 日本語パスの仮想環境でも yfinance が動くように
 
     if start is None:
         last = history_last_date(cfg)
