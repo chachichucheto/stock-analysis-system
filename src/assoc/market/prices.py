@@ -86,5 +86,6 @@ def price_source_from_config(cfg) -> PriceSource:
         return YFinanceLivePriceSource()
     if kind == "layered":
         from assoc.market.layered_prices import LayeredPriceSource, layers_from_config
-        return LayeredPriceSource(layers_from_config(cfg))
+        max_stale = int((section.get("layered") or {}).get("max_stale_days", 10))
+        return LayeredPriceSource(layers_from_config(cfg), cfg=cfg, max_stale_days=max_stale)
     raise ValueError(f"未知の prices.source です: {kind}")

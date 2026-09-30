@@ -70,7 +70,7 @@ def _attach(base: pd.DataFrame, old: pd.DataFrame, name: str, code: str, warns: 
     b = base.set_index("date")["close"]
     o = old.set_index("date")["close"]
     common = b.index.intersection(o.index)
-    if len(common) >= 3:
+    if len(common) >= 1:          # 重なりが1〜2日でも、倍率はそろえる(0日のときだけつなぎ目の検査へ)
         ratios = (b.loc[common] / o.loc[common]).astype(float)
         r = float(np.median(ratios))
         lo, hi = float(ratios.min()), float(ratios.max())
@@ -97,10 +97,13 @@ def _attach(base: pd.DataFrame, old: pd.DataFrame, name: str, code: str, warns: 
 class LayeredPriceSource:
     """layers は「新しい・優先する順」。先頭が基準で、後ろの層は倍率をそろえてから足りない日だけ足す。"""
 
-    def __init__(self, layers: list[Layer]):
+    def __init__(self, layers: list[Layer], cfg=None, max_stale_days: int = 10):
         self.layers = layers
+        self.cfg = cfg                      # 渡されていれば、古い銘柄をその場で自動補完する
+        self.max_stale_days = max_stale_days
         self.warnings: list[str] = []
         self.dropped_rows = 0
+        self._autofill_tried: set[str] = set()
 
     def _read(self, layer: Layer, code: str) -> pd.DataFrame:
         if not layer.exists():
@@ -131,7 +134,7 @@ class LayeredPriceSource:
         self.dropped_rows += dropped
         return df
 
-    def daily(self, code: str, start: date, end: date) -> pd.DataFrame:
+    def _merged(self, code: str) -> pd.DataFrame:
         warns: list[str] = []
         merged = pd.DataFrame(columns=COLUMNS)
         for layer in self.layers:
@@ -140,6 +143,28 @@ class LayeredPriceSource:
         for w in warns:
             if w not in self.warnings:
                 self.warnings.append(w)
+        return merged
+
+    def daily(self, code: str, start: date, end: date) -> pd.DataFrame:
+        merged = self._merged(code)
+        today = date.today()
+        recent = end >= today - timedelta(days=3)         # 「今の株価」を求める評価か(過去事例の計算は対象外)
+        if recent:
+            def stale(m: pd.DataFrame) -> bool:
+                return m.empty or m["date"].max() < end - timedelta(days=self.max_stale_days)
+
+            if stale(merged) and self.cfg is not None and code not in self._autofill_tried:
+                self._autofill_tried.add(code)              # 1銘柄につき1回だけ、その場で空白補完を試す
+                try:
+                    fill_gap(self.cfg, [code], today=today)
+                    merged = self._merged(code)
+                except Exception as e:
+                    self.warnings.append(f"{code}: 空白の自動補完に失敗({type(e).__name__})")
+            if stale(merged):
+                # 古い株価を「今の株価」として返さない(データ無し扱い。呼び出し側で除外される)
+                last = merged["date"].max() if not merged.empty else None
+                self.warnings.append(f"{code}: 株価が古い(最新 {last})ため、データ無しとして扱います")
+                return pd.DataFrame(columns=COLUMNS)
         if merged.empty:
             return pd.DataFrame(columns=COLUMNS)
         return _normalize(merged, start, end)
