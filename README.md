@@ -9,6 +9,7 @@
 | [docs/CONCEPT.md](docs/CONCEPT.md) | 何を・なぜ作るか(最上位) |
 | [docs/DESIGN.md](docs/DESIGN.md) | どう作るか |
 | [docs/HANDOFF.md](docs/HANDOFF.md) | Windows での導入・毎日の使い方・バックアップ |
+| [docs/LOCAL_KICKOFF.md](docs/LOCAL_KICKOFF.md) | ローカルの Claude Code への作業指示書 |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | 決定の記録 |
 | [docs/THEMES.md](docs/THEMES.md) | テーマの一覧 |
 | [docs/ANALYSIS_PLAN.md](docs/ANALYSIS_PLAN.md) | 答え合わせの定義と基準 |
