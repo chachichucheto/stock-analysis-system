@@ -100,20 +100,54 @@ def parse_documents_json(
     return items
 
 
+def _dotenv_path():
+    """.env の場所(リポジトリ直下)。テストでは差し替えて、本物の .env を読まないようにする。"""
+    from assoc.config import REPO_ROOT
+
+    return REPO_ROOT / ".env"
+
+
+def resolve_api_key(cfg) -> str:
+    """API キーを、config.yaml の edinet.api_key → 環境変数 EDINET_API_KEY → リポジトリ直下の .env の順に探す。
+
+    .env は git 管理外(.gitignore 済み)。キーの値は、ログにも画面にも出さない。
+    """
+    import os
+
+    key = str((cfg.section("edinet") or {}).get("api_key", "") or "").strip()
+    if key:
+        return key
+    key = os.environ.get("EDINET_API_KEY", "").strip()
+    if key:
+        return key
+    env_file = _dotenv_path()
+    if env_file.exists():
+        for line in env_file.read_text(encoding="utf-8-sig", errors="ignore").splitlines():
+            line = line.strip()
+            if line.startswith("EDINET_API_KEY") and "=" in line:
+                return line.split("=", 1)[1].strip().strip('"').strip("'")
+    return ""
+
+
 def fetch_edinet(cfg, con, day: date | None = None) -> int:
     """指定日(省略時は当日、日本時間)の書類一覧を取得する。API キー未設定ならスキップする。"""
     day = day or jst_date(utcnow())
-    api_key = (cfg.section("edinet") or {}).get("api_key", "")
+    api_key = resolve_api_key(cfg)
     if not api_key:
-        log_fetch(con, "edinet", True, 0, "edinet.api_key が未設定のためスキップ")
+        log_fetch(con, "edinet", True, 0, "API キー未設定のためスキップ(config.yaml の edinet.api_key か .env の EDINET_API_KEY)")
         return 0
     collect = cfg.section("collect")
     limiter = RateLimiter(
         float(collect.get("request_interval_sec", 1.0)), collect.get("user_agent", "assoc-research/0.1")
     )
-    resp = limiter.get(
-        DOCUMENTS_URL, params={"date": day.isoformat(), "type": 2, "Subscription-Key": api_key}
-    )
+    try:
+        resp = limiter.get(
+            DOCUMENTS_URL, params={"date": day.isoformat(), "type": 2, "Subscription-Key": api_key}
+        )
+    except Exception as e:
+        # エラー文には URL(=API キー)が入るので、そのまま記録・表示しない
+        status = getattr(getattr(e, "response", None), "status_code", None)
+        raise RuntimeError(f"EDINET の取得に失敗({type(e).__name__}, HTTP {status})。API キーは非表示") from None
     data = resp.json()
     items = parse_documents_json(data)
     return upsert_disclosures(con, items)
