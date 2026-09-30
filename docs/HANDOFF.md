@@ -192,3 +192,16 @@ powershell -ExecutionPolicy Bypass -File scripts\windows\register_tasks.ps1   # 
 | 2026-09-25 | 設計書一式(CONCEPT / DESIGN / DECISIONS / THEMES / ANALYSIS_PLAN) | なし |
 | 2026-09-25 | 実装一式(収集・足切り・入力パック・確定・ランキング・レポート・翌日の処理・月次の集計)、通し試験 | §0 の手順(収集だけ先に開始) |
 | 2026-09-25 | ダッシュボード、Fable の実装点検の反映(重大2件・重要11件ほか)、過去事例30件 | §0 の手順。株価DBの接続後に §4 の `pastcase compute` |
+| 2026-09-30 | ローカル化を実施(クラウドへの報告・push はしない)。TDnet・JPX(銘柄一覧・監理整理・決算予定日)・EDINET・RSS(経済系10本を追加)を実データに合わせた。株価は既存システムの parquet を読み取り専用で重ねる方式(`assoc prices status/fill`)。開示をニュースと別枠にした足切り、候補ウォッチ(`assoc watch`)、共有棚(`assoc export` → `data\shared\`)を追加 | なし(実施済み)。詳細は `docs/DECISIONS.md` D34、`docs/PROPOSAL_HYBRID_AND_SHARING.md` |
+
+### 新しいコマンド(2026-09-30)
+
+| コマンド | 内容 |
+|---|---|
+| `python -m assoc prices status` | 株価の各層(既存の日次555銘柄/連想側の空白補完/既存の全銘柄履歴)の鮮度を見る |
+| `python -m assoc prices fill [--codes …\|--all] [--start …]` | 株価の空白期間を、連想側が取得して補う(既存のファイルには書かない) |
+| `python -m assoc watch [--dry-run]` | 本命・監視の銘柄に、新しい材料(開示・ニュース・決算日の接近)があるかを点検する |
+| `python -m assoc export` | 共有棚(`data\shared\`)を更新する。収集・パック作成・翌日の処理のあとに自動で実行される |
+
+**共有棚**:他のシステムが、連想側の収集結果(ニュース・開示・銘柄一覧・決算予定日)を、Parquet で読み取り専用に使うための出力。
+過去の日のファイルは書き換えない。`manifest.json` の `generated_at` で鮮度を確認する。既存システム側の変更は、承認を得てから行う。

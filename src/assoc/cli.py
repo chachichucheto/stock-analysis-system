@@ -149,6 +149,38 @@ def cmd_prices(args) -> int:
     return 0
 
 
+def cmd_watch(args) -> int:
+    """候補ウォッチ:本命・監視の銘柄に新しい材料があるかを点検する(トークンは使わない)。"""
+    from assoc.watch import build_watch
+    app = _app(args)
+    w = build_watch(app, app.today(), save_state=not args.dry_run)
+    print(f"対象 {w['targets']}銘柄 / 新しい材料あり {w['with_new_material']}銘柄(前回の点検 {w['since']} 以降)")
+    for r in w["items"]:
+        if r["new_material"]:
+            print(f"  {r['code']} {r['company_name']}: 開示 {len(r['disclosures'])}件・ニュース {len(r['news'])}件"
+                  + (f"・決算 {r['earnings_date']}" if r["earnings_soon"] else ""))
+    return 0
+
+
+def cmd_export(args) -> int:
+    """共有棚(data/shared/)を更新する。他のシステムが連想側の収集結果を読み取り専用で使うための出力。"""
+    from assoc.shared_export import export_shared
+    app = _app(args)
+    r = export_shared(app.con, app.data / "shared", app.today())
+    print(f"共有棚: 書き出し {r['written']} / 変更なし {r['skipped']} / ファイル数 {r['files']}({app.data / 'shared'})")
+    return 0
+
+
+def _refresh_shared(args) -> None:
+    """収集・入力パック・翌日の処理のあとに共有棚を更新する。失敗しても本来の処理は止めない。"""
+    try:
+        from assoc.shared_export import export_shared
+        app = _app(args)
+        export_shared(app.con, app.data / "shared", app.today())
+    except Exception as e:
+        print(f"(共有棚の更新に失敗: {type(e).__name__}: {str(e)[:120]})")
+
+
 def cmd_pastcase(args) -> int:
     from assoc.review.past_cases import compute_all
     for line in compute_all(_app(args)):
@@ -266,6 +298,11 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--open", action="store_true", help="作ったあとブラウザで開く")
     s.set_defaults(func=cmd_dashboard)
 
+    s = sub.add_parser("watch", help="候補ウォッチ:本命・監視の銘柄に新しい材料があるかを点検する")
+    s.add_argument("--dry-run", action="store_true", help="前回の点検時刻を更新しない")
+    s.set_defaults(func=cmd_watch)
+
+    sub.add_parser("export", help="共有棚(data/shared/)を更新する(他のシステムが読み取り専用で使う)").set_defaults(func=cmd_export)
     sub.add_parser("verify", help="記録が書き換えられていないか確認する").set_defaults(func=cmd_verify)
     sub.add_parser("backup", help="記録を複製する").set_defaults(func=cmd_backup)
     return p
@@ -285,4 +322,6 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     if args.command in ("report", "nextday", "collect", "commit") and code == 0:
         _refresh_dashboard(args)
+    if args.command in ("collect", "prepare", "nextday") and code == 0:
+        _refresh_shared(args)
     return code

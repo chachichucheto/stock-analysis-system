@@ -140,6 +140,14 @@ def build_pack(app: "App", day: date) -> Path:
     codes = sorted(active_codes | {c for e in pack_events for c in e["codes"]})
     market = _market_state(app, codes, day)
 
+    # 候補ウォッチ:本命・監視の銘柄に、前回の点検以降の新しい材料があるか(Python だけで数える。トークンは使わない)。
+    # 深掘りの対象は new_material=true の銘柄だけ。材料が無い銘柄は、調べ直さない。
+    from assoc.watch import build_watch
+    w = build_watch(app, day)
+    watch = {"since": w["since"], "targets": w["targets"], "with_new_material": w["with_new_material"],
+             "items": [r for r in w["items"] if r["new_material"]],
+             "no_new_material_codes": [r["code"] for r in w["items"] if not r["new_material"]]}
+
     pack = {
         "pack_version": PACK_VERSION, "date": day.isoformat(), "generated_at": to_iso(now), "mode": "通常",
         "window": {"from": to_iso(window_start), "to": to_iso(window_end)},
@@ -158,6 +166,7 @@ def build_pack(app: "App", day: date) -> Path:
                             "stage": c.get("stage")} for c in s.candidates]} for s in active],
         "past_cases": _load_past_cases(),
         "market": market,
+        "watch": watch,
         "releases_today": releases_today,
         # 週1回、テーマの温度を更新する日かどうか(前回の更新から7日以上たっていれば true)
         "temperature_update_due": temperature_due,
