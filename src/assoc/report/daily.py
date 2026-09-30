@@ -24,6 +24,7 @@ class DayContext:
     evidence: dict[str, list[dict[str, Any]]] = field(default_factory=dict)  # scenario_id -> 証拠
     sell_signals: list[tuple[str, str, list[str]]] = field(default_factory=list)  # (code, 社名, サイン)
     warnings: list[str] = field(default_factory=list)
+    health: list[dict[str, Any]] = field(default_factory=list)         # 最新日の継続性チェック(重い順)
 
 
 def _pct(x: float | None, signed: bool = False) -> str:
@@ -123,6 +124,19 @@ def render_daily(eval_date: date, evals: list[CandidateEval], ctx: DayContext) -
         lines.append("- なし")
     for code, name, signals in ctx.sell_signals:
         lines.append(f"- {name}({code}) ⚠ {' / '.join(signals)}")
+    lines.append("")
+
+    lines += ["## 継続性チェック(選んだ銘柄の期待は、まだ続いているか)", ""]
+    if not ctx.health:
+        lines.append("- 対象なし(進行中のシナリオの候補と、本命に挙げた銘柄が、まだ無い)")
+    else:
+        lines += [f"基準日 {ctx.health[0].get('date')}。自動で数えた目印です(判断は最後にあなたが行います)。", "",
+                  "| 銘柄 | シナリオ | 状態 | 理由 |", "|---|---|---|---|"]
+        for r in ctx.health:
+            mark = {"継続": "🟢", "注意": "🟡", "劣化": "🔴", "織り込み進行": "🔵", "終了": "⚪"}.get(r["status"], "")
+            chg = f"(前回 {r['prev_status']} から変化)" if r.get("changed") else ""
+            lines.append(f"| {r.get('company_name') or r['code']}({r['code']}) | {r['scenario_id']} | "
+                         f"{mark} {r['status']}{chg} | {' / '.join(r.get('reasons', []))} |")
     lines.append("")
     return "\n".join(lines)
 

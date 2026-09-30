@@ -73,7 +73,36 @@ tr:last-child td { border-bottom: none; }
 .serious { --dot: var(--serious); } .critical { --dot: var(--critical); }
 .empty { color: var(--text-muted); padding: 12px; }
 .stars { letter-spacing: 1px; }
+.sitenav { padding: 8px 24px; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px;
+  background: var(--surface-1); border-bottom: 1px solid var(--border); }
+.sitenav a { color: var(--accent); text-decoration: none; }
+.sitenav a.active { color: var(--text-primary); font-weight: 700; border-bottom: 2px solid var(--accent); }
 """
+
+
+def _site_nav(app: "App", out_dir: Path) -> str:
+    """既存システムのダッシュボード(同じ共通ナビゲーション)へのリンク+このページ。
+
+    既存システムのコードは読まない(独立)。フォルダの中のファイル名から作る(旧モデルのページは除く)。
+    設定 `paths.existing_dashboards` が無ければ、このページだけのナビゲーションにする。
+    """
+    import os
+    from urllib.parse import quote
+
+    directory = app.cfg.raw.get("paths", {}).get("existing_dashboards") or ""
+    links: list[str] = []
+    if directory and Path(directory).is_dir():
+        def order(p: Path):
+            n = p.stem
+            if n.startswith("モデル") and len(n) > 3 and n[3] not in "旧E":
+                return (0, n[3], n)
+            return (1 if n.startswith("モデルEx") else 2, "", n)
+        pages = [p for p in Path(directory).glob("*.html") if "旧" not in p.name]
+        for p in sorted(pages, key=order):
+            href = quote(Path(os.path.relpath(p, out_dir)).as_posix(), safe="/")
+            links.append(f'<a href="{href}">{_e(p.stem)}</a>')
+    links.append('<a class="active" href="#">連想モデル</a>')
+    return '<div class="sitenav">' + "".join(links) + "</div>"
 
 
 def _e(x: Any) -> str:
@@ -193,6 +222,16 @@ def build_dashboard(app: "App", day: date | None = None) -> Path:
                 for p in sorted((p for p in tracking if p.get("event") == "sell_signal"),
                                 key=lambda p: p["date"], reverse=True)[:30]]
 
+    # ---- 継続性チェック(選んだ銘柄の期待は、まだ続いているか) ----
+    health_level = {"継続": "good", "注意": "warning", "劣化": "critical", "織り込み進行": "serious", "終了": ""}
+    health = app.latest_health(day)
+    health_rows = [[_e(r.get("company_name") or r["code"]) + f"({_e(r['code'])})", _e(r["scenario_id"]),
+                    _badge(health_level.get(r["status"], ""), r["status"]
+                           + (f"(前回 {r['prev_status']} から変化)" if r.get("changed") else "")),
+                    _pct(r["metrics"].get("excess"), True), _pct(r["metrics"].get("priced_in")),
+                    f"{r['metrics']['volume_ratio']:.0%}" if r["metrics"].get("volume_ratio") is not None else "―",
+                    _e(r["metrics"].get("followup_items")), _e(" / ".join(r.get("reasons", [])))] for r in health]
+
     # ---- 本命の履歴 ----
     hist_rows = []
     for p in sorted(picks, key=lambda p: p["first_pick_date"], reverse=True)[:100]:
@@ -245,11 +284,12 @@ def build_dashboard(app: "App", day: date | None = None) -> Path:
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>連想ダッシュボード</title><style>{CSS}</style></head>
 <body>
+{_site_nav(app, app.dir("reports"))}
 <header><h1>連想ダッシュボード</h1>
 <span class="meta">作成 {generated} / 最新のレポート {_e(last_date or 'まだありません')}
 {f' / <a href="{_e(report_link)}">連想レポートを開く</a>' if report_link else ''}</span></header>
 <nav><a href="#summary">要約</a><a href="#picks">本命</a><a href="#ranking">ランキング</a><a href="#scenarios">シナリオ</a>
-<a href="#signals">売りのサイン</a><a href="#history">本命の履歴</a><a href="#collect">収集の状態</a><a href="#runs">実行記録</a></nav>
+<a href="#health">継続性チェック</a><a href="#signals">売りのサイン</a><a href="#history">本命の履歴</a><a href="#collect">収集の状態</a><a href="#runs">実行記録</a></nav>
 <main>
 <section id="summary"><h2>要約</h2><div class="kpis">{kpis}</div>
 <p class="note">的中率は改善のための目安。合否の判定は運用開始から約6か月後にまとめて行う(CONCEPT §11)。</p></section>
@@ -262,6 +302,11 @@ def build_dashboard(app: "App", day: date | None = None) -> Path:
 <p class="note">終了したシナリオは45日分だけ表示する。</p>
 {_table(["番号", "シナリオ", "状態", "時間の型", "強さ", "残り(営業日)", "裏取り", "候補"], scen_rows, {5, 6},
         "まだシナリオがありません")}</section>
+<section id="health"><h2>継続性チェック(選んだ銘柄の期待は、まだ続いているか)</h2>
+<p class="note">本命と進行中の候補を、毎日自動で点検した目印(価格・関心・新しい材料・悪材料の語・期間)。判断は最後に人が行う。
+状態:🟢継続 / 🟡注意 / 🔴劣化 / 🔵織り込み進行 / ⚪終了。閾値は暫定で、記録を積んで当たりを検証する。</p>
+{_table(["銘柄", "シナリオ", "状態", "TOPIX超過", "織り込み度", "売買代金(5日/20日)", "新しい材料", "理由"],
+        health_rows, {3, 4, 5, 6}, "対象なし(進行中のシナリオの候補と、本命に挙げた銘柄が、まだ無い)")}</section>
 <section id="signals"><h2>売りのサイン(過去に本命とした銘柄)</h2>
 {_table(["日付", "銘柄", "シナリオ", "サイン"], sig_rows, empty="売りのサインはありません")}</section>
 <section id="history"><h2>本命の履歴</h2>

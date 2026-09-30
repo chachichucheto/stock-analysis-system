@@ -147,6 +147,11 @@ def build_pack(app: "App", day: date) -> Path:
     watch = {"since": w["since"], "targets": w["targets"], "with_new_material": w["with_new_material"],
              "items": [r for r in w["items"] if r["new_material"]],
              "no_new_material_codes": [r["code"] for r in w["items"] if not r["new_material"]]}
+    # 継続性チェック:期待が「注意」「劣化」になった、または状態が変わった銘柄(深掘りの対象。tracking/health.py)
+    health = [{"code": r["code"], "company_name": r.get("company_name"), "scenario_id": r["scenario_id"],
+               "status": r["status"], "prev_status": r.get("prev_status"), "changed": r.get("changed"),
+               "reasons": r.get("reasons", [])}
+              for r in app.latest_health(day) if r["status"] in ("注意", "劣化") or r.get("changed")]
 
     pack = {
         "pack_version": PACK_VERSION, "date": day.isoformat(), "generated_at": to_iso(now), "mode": "通常",
@@ -167,6 +172,7 @@ def build_pack(app: "App", day: date) -> Path:
         "past_cases": _load_past_cases(),
         "market": market,
         "watch": watch,
+        "health": health,
         "releases_today": releases_today,
         # 週1回、テーマの温度を更新する日かどうか(前回の更新から7日以上たっていれば true)
         "temperature_update_due": temperature_due,

@@ -40,6 +40,14 @@ class Thresholds:
     surged_days: int = 20
     vol_window: int = 20                 # 普段の値動きを測る日数
     star_thresholds: tuple[float, float, float] = (0.05, 0.10, 0.20)  # ★2〜★4 の自信度の下限(仮。S2-d で決める)
+    # 継続性チェック(tracking/health.py)。暫定。毎日の記録で「劣化」判定の当たりを検証してから見直す
+    health_excess_floor: float = -0.05   # TOPIX 超過がこれ以下 → 劣化
+    health_excess_watch: float = -0.02   # これ以下 → 注意
+    health_drawdown_pt: float = 0.08     # 超過のピークからの押し戻しがこれ以上 → 劣化
+    health_volume_low: float = 0.6       # 直近5日の売買代金が20日平均のこの割合未満 → 注意(関心の低下)
+    health_stall_frac: float = 0.4       # 期間のこの割合を過ぎ、織り込みが進まず材料も無ければ 停滞
+    health_stall_priced_in: float = 0.2
+    health_news_days: int = 5            # 新しい材料を数える日数
 
 
 @dataclass

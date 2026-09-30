@@ -169,7 +169,17 @@ class App:
         return DayContext(
             new_scenarios=[s for s in scenarios.values() if s.created_date == day],
             updates=[u for u in self.store.read("scenario_update") if u.get("run_date") == iso],
-            ended=ended, grades=grades, evidence=evidence, sell_signals=signals, warnings=warnings)
+            ended=ended, grades=grades, evidence=evidence, sell_signals=signals, warnings=warnings,
+            health=self.latest_health(day))
+
+    def latest_health(self, day: date) -> list[dict[str, Any]]:
+        """day 以前で最新の継続性チェック(1日分)を、重い状態(劣化 → 注意 → 織り込み進行 → 継続 → 終了)の順で返す。"""
+        rows = [r for r in self.store.read("health_snapshot") if r["date"] <= day.isoformat()]
+        if not rows:
+            return []
+        newest = max(r["date"] for r in rows)
+        order = {"劣化": 0, "注意": 1, "織り込み進行": 2, "継続": 3, "終了": 4}
+        return sorted((r for r in rows if r["date"] == newest), key=lambda r: (order.get(r["status"], 9), r["code"]))
 
     # ---- 翌日の引け後:等級の確定・状態の更新・売りのサイン・「動いた」 ------------------
     def nextday(self, day: date | None = None) -> dict[str, int]:
@@ -284,7 +294,55 @@ class App:
                 self.store.append("pick_tracking", {"scenario_id": key[0], "code": key[1], "company_name": name,
                                                     "event": "sell_signal", "signals": sig, "date": day.isoformat()})
                 counts["sell_signal"] += 1
+        counts["health"] = self._record_health(day, evals, load_scenarios(self.store), loader, topix, picks)
         return counts
+
+    def _record_health(self, day: date, evals, scenarios, loader, topix, picks) -> int:
+        """継続性チェック:本命・進行中の候補の「期待の健康状態」を毎日記録する(追記のみ。tracking/health.py)。"""
+        from datetime import datetime, time
+        from assoc.timeutil import JST
+        from assoc.tracking.health import HealthInput, assess, compute_price_metrics, risk_headlines
+        from assoc.watch import scan
+
+        eval_by_key = {(e.scenario.scenario_id, e.candidate["code"]): e for e in evals}
+        first_pick = {(p["scenario_id"], p["code"]): date.fromisoformat(p["first_pick_date"]) for p in picks}
+        keys = list(dict.fromkeys(list(eval_by_key) + list(first_pick)))
+        last: dict[tuple[str, str], dict] = {}
+        for r in self.store.read("health_snapshot"):
+            last[(r["scenario_id"], r["code"])] = r
+        since = datetime.combine(day - timedelta(days=self.th.health_news_days), time.min, tzinfo=JST)
+        written = 0
+        for key in keys:
+            sc = scenarios.get(key[0])
+            if sc is None or sc.started_date is None:
+                continue                                    # 待機中(起動前)のシナリオは、まだ見ない
+            if key in first_pick and key not in eval_by_key and business_days_between(first_pick[key], day) > 60:
+                continue                                    # 本命にしてから60営業日を過ぎたら、追跡を終える
+            if last.get(key, {}).get("date") == day.isoformat():
+                continue                                    # 同じ日に2回書かない
+            code = key[1]
+            name = next((c.get("master_name") or c["company_name"] for c in sc.candidates if c["code"] == code), code)
+            prices = loader.get(code)
+            m = compute_price_metrics(prices, topix, sc.started_date, day)
+            e = eval_by_key.get(key)
+            priced = e.priced_in if e else self._priced_in_now(sc, prices, topix, day, 0.0)
+            hit = scan(self.con, [{"code": code, "company_name": name, "scenario_ids": [key[0]]}], since, day)[0]
+            titles = [d["title"] for d in hit["disclosures"]] + [n["title"] for n in hit["news"]]
+            weakened = any(u["type"] in ("弱体化", "消滅") for u in sc.updates)
+            res = assess(HealthInput(
+                excess=m["excess"], excess_change_5d=m["excess_change_5d"], peak_excess=m["peak_excess"],
+                volume_ratio=m["volume_ratio"], priced_in=priced,
+                elapsed_days=business_days_between(sc.started_date, day), expected_days=sc.expected_days,
+                followup_items=len(titles), risk_items=risk_headlines(titles),
+                scenario_weakened=weakened, scenario_ended=sc.status == "終了"), self.th)
+            prev = last.get(key)
+            self.store.append("health_snapshot", {
+                "date": day.isoformat(), "scenario_id": key[0], "code": code, "company_name": name,
+                "status": res.status, "reasons": res.reasons, "metrics": res.metrics,
+                "prev_status": prev["status"] if prev else None,
+                "changed": bool(prev and prev["status"] != res.status), "is_pick": key in first_pick})
+            written += 1
+        return written
 
     def _priced_in_now(self, sc, prices, topix, day: date, fallback: float) -> float:
         """終わったシナリオの銘柄の織り込み度を、その日の株価で計算し直す。"""

@@ -2,6 +2,7 @@
 # パスは Windows でもそのまま書ける(例: D:/stock/data)。相対パスはリポジトリの直下からの位置。
 
 paths:
+  existing_dashboards: ""             # 既存システムのダッシュボードのフォルダ。設定すると、連想ダッシュボードの上部から各ページへ移れる(読み取りのみ)
   data_dir: data                 # DB・生データ・記録・レポートの置き場所
   backup_dir: ""                 # 追記専用の記録の複製先。OneDrive のフォルダがおすすめ(docs/HANDOFF.md「バックアップ」)。空なら複製しない
 
