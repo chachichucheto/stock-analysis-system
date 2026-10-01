@@ -101,14 +101,28 @@ def test_dashboard_builds_with_site_nav_and_health_section(tmp_path):
 
     existing = tmp_path / "existing_dashboards"
     existing.mkdir()
+    nav = ('<div class="model-nav">
+  <a href="モデル①株価分析.html">モデル① 株価分析</a>
+'
+           '  <a href="モデル②ファンダメンタルズ分析.html">モデル② ファンダメンタルズ分析</a>
+'
+           '  <a href="研究_銘柄選定精度.html">研究: 銘柄選定精度</a>
+'
+           '  <a href="モデルEx_CIS Engine.html">モデルEx CIS Engine</a>
+'
+           '  <a href="../../クロード連想モデル/data/reports/dashboard.html">連想モデル(別フォルダ)</a>
+</div>')
     for name in ("モデル①株価分析.html", "モデル②ファンダメンタルズ分析.html", "モデルEx_CIS Engine.html",
                  "研究_銘柄選定精度.html", "モデル旧⑦スコアリング.html"):
-        (existing / name).write_text("<html></html>", encoding="utf-8")
+        (existing / name).write_text(f"<html>{nav}</html>", encoding="utf-8")
     cfg = Config(raw={"paths": {"data_dir": str(tmp_path / "data"), "existing_dashboards": str(existing)},
                       "prices": {"source": "yfinance_live"}})
     html = build_dashboard(App(cfg), date(2026, 9, 30)).read_text(encoding="utf-8")
-    assert "sitenav" in html and "モデル①株価分析" in html and "連想モデル" in html
+    assert 'class="model-nav"' in html and "モデル① 株価分析" in html and "モデル⑧ ニュース連想" in html
+    assert "連想モデル(別フォルダ)" not in html              # 古い別フォルダのリンクは写さない
     assert "モデル旧⑦" not in html                          # 旧モデルのページはナビゲーションに載せない
     assert "CIS%20Engine.html" in html                       # 空白を含むファイル名もリンクとして壊れない(URL エンコード)
-    assert html.index("モデル①株価分析") < html.index("モデルEx_CIS") < html.index("研究_銘柄選定精度")
+    assert html.index("モデル① 株価分析") < html.index("モデルEx CIS") < html.index("研究: 銘柄選定精度")
+    mirror = (existing / "モデル⑧ニュース連想.html").read_text(encoding="utf-8")   # 既存の dashboard フォルダにも置く
+    assert 'class="active" href="%E3%83%A2' in mirror and "../" not in mirror.split("</div>")[0]
     assert 'id="health"' in html and "継続性チェック" in html
