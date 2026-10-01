@@ -19,22 +19,28 @@ if TYPE_CHECKING:
 CSS = """
 :root {
   color-scheme: dark;
-  --surface-0: #111110; --surface-1: #1a1a19; --border: #383835;
-  --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #9a998f;
-  --accent: #3987e5;
-  --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b;
+  --page: #0d0d0d; --surface-0: #0d0d0d; --surface-1: #1a1a19; --surface-2: #222220;
+  --border: rgba(255,255,255,0.10); --border-strong: rgba(255,255,255,0.18);
+  --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #898781;
+  --accent: #3987e5; --accent-strong: #1c5cab;
+  --good: #1baf7a; --warning: #eab308; --serious: #ec835a; --critical: #e66767;
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--surface-0); color: var(--text-primary);
-  font: 14px/1.6 "Hiragino Sans", "Yu Gothic UI", "Meiryo", system-ui, sans-serif; }
-header { padding: 16px 24px; border-bottom: 1px solid var(--border); background: var(--surface-1);
-  display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: baseline; }
-header h1 { font-size: 18px; margin: 0; }
-header .meta { color: var(--text-secondary); font-size: 13px; }
-nav { padding: 8px 24px; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px;
-  background: var(--surface-1); border-bottom: 1px solid var(--border); position: sticky; top: 0; }
-nav a { color: var(--accent); text-decoration: none; }
-main { padding: 16px 24px 48px; max-width: 1280px; margin: 0 auto; }
+body { margin: 0; padding: 20px; max-width: 1200px; background: var(--page); color: var(--text-primary);
+  font: 14px/1.6 system-ui, -apple-system, "Segoe UI", "Yu Gothic", "Meiryo", sans-serif; }
+.model-nav { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+.model-nav a { padding: 7px 16px; border-radius: 6px; background: var(--surface-1); border: 1px solid var(--border);
+  color: var(--text-secondary); text-decoration: none; font-size: 13px; }
+.model-nav a.active { background: var(--accent); color: white; border-color: var(--accent); font-weight: bold; }
+header { padding: 0 0 6px; display: flex; flex-wrap: wrap; gap: 4px 24px; align-items: baseline; }
+header h1 { font-size: 24px; margin: 0; }
+header .meta { color: var(--text-muted); font-size: 13px; }
+nav { padding: 8px 0; display: flex; flex-wrap: wrap; gap: 6px; font-size: 13px;
+  background: var(--page); position: sticky; top: 0; z-index: 5; }
+nav a { padding: 5px 12px; border-radius: 6px; background: var(--surface-1); border: 1px solid var(--border);
+  color: var(--text-secondary); text-decoration: none; }
+nav a:hover { border-color: var(--accent); color: var(--text-primary); }
+main { padding: 0 0 48px; }
 section { margin-top: 28px; }
 h2 { font-size: 16px; margin: 0 0 10px; }
 .note { color: var(--text-muted); font-size: 12px; margin: 4px 0 10px; }
@@ -52,7 +58,7 @@ h2 { font-size: 16px; margin: 0 0 10px; }
 .table-wrap { overflow-x: auto; background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; }
 table { border-collapse: collapse; width: 100%; font-size: 13px; }
 th, td { padding: 6px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
-th { color: var(--text-secondary); font-weight: 600; white-space: nowrap; }
+th { color: var(--text-secondary); font-weight: 600; white-space: nowrap; background: var(--surface-2); }
 td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 tr:last-child td { border-bottom: none; }
 .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; white-space: nowrap; }
@@ -61,36 +67,50 @@ tr:last-child td { border-bottom: none; }
 .serious { --dot: var(--serious); } .critical { --dot: var(--critical); }
 .empty { color: var(--text-muted); padding: 12px; }
 .stars { letter-spacing: 1px; }
-.sitenav { padding: 8px 24px; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px;
-  background: var(--surface-1); border-bottom: 1px solid var(--border); }
-.sitenav a { color: var(--accent); text-decoration: none; }
-.sitenav a.active { color: var(--text-primary); font-weight: 700; border-bottom: 2px solid var(--accent); }
+a { color: var(--accent); }
 """
 
 
-def _site_nav(app: "App", out_dir: Path) -> str:
-    """既存システムのダッシュボード(同じ共通ナビゲーション)へのリンク+このページ。
+def _site_nav(app: "App", out_dir: Path, in_folder: bool = False) -> str:
+    """既存システムのダッシュボードと同じ共通ナビゲーション(`model-nav`)を作る。
 
-    既存システムのコードは読まない(独立)。フォルダの中のファイル名から作る(旧モデルのページは除く)。
-    設定 `paths.existing_dashboards` が無ければ、このページだけのナビゲーションにする。
+    リンクの並びと表示名は、既存フォルダの最初のページの `model-nav` から写す(既存のコードは読まない)。
+    「モデル⑧ ニュース連想」(このページ)が無ければ最後に足す。設定 `paths.existing_dashboards` が無い、
+    またはページが読めなければ、このページだけにする。
     """
+    import html as _html
     import os
+    import re
     from urllib.parse import quote
 
     directory = app.cfg.raw.get("paths", {}).get("existing_dashboards") or ""
-    links: list[str] = []
+    items: list[tuple[str, str]] = []
     if directory and Path(directory).is_dir():
-        def order(p: Path):
-            n = p.stem
-            if n.startswith("モデル") and len(n) > 3 and n[3] not in "旧E":
-                return (0, n[3], n)
-            return (1 if n.startswith("モデルEx") else 2, "", n)
-        pages = [p for p in Path(directory).glob("*.html") if "旧" not in p.name]
-        for p in sorted(pages, key=order):
-            href = quote(Path(os.path.relpath(p, out_dir)).as_posix(), safe="/")
-            links.append(f'<a href="{href}">{_e(p.stem)}</a>')
-    links.append('<a class="active" href="#">連想モデル</a>')
-    return '<div class="sitenav">' + "".join(links) + "</div>"
+        for p in sorted(Path(directory).glob("モデル*.html")):
+            if "旧" in p.name or p.name == MIRROR_NAME:
+                continue
+            try:
+                with p.open(encoding="utf-8") as f:
+                    head = f.read(400_000)
+            except OSError:
+                continue
+            m = re.search(r'<div class="model-nav">(.*?)</div>', head, re.S)
+            if not m:
+                continue
+            for href, label in re.findall(r'<a[^>]*href="([^"]+)"[^>]*>([^<]+)</a>', m.group(1)):
+                if "連想モデル" in label or "dashboard.html" in href or href == MIRROR_NAME:
+                    continue
+                items.append((_html.unescape(href), _html.unescape(label)))
+            break
+    links = []
+    for href, label in items:
+        if in_folder:
+            target = quote(href, safe="/")
+        else:
+            target = quote(Path(os.path.relpath(Path(directory) / href, out_dir)).as_posix(), safe="/")
+        links.append(f'<a href="{target}">{_e(label)}</a>')
+    links.append(f'<a class="active" href="{quote(MIRROR_NAME) if in_folder else "#"}">モデル⑧ ニュース連想</a>')
+    return '<div class="model-nav">' + "".join(links) + "</div>"
 
 
 def _e(x: Any) -> str:
@@ -333,8 +353,7 @@ def _mirror_to_existing(app: "App", html: str, out_dir: Path, report_link: str |
     target_dir = Path(directory)
     try:
         nav_old = _site_nav(app, out_dir)
-        nav_new = _site_nav(app, target_dir).replace(
-            f'<a href="{quote(MIRROR_NAME, safe="/")}">{_e(Path(MIRROR_NAME).stem)}</a>', "")
+        nav_new = _site_nav(app, target_dir, in_folder=True)
         out = html.replace(nav_old, nav_new)
         if report_link:
             rel = quote(Path(os.path.relpath(out_dir / report_link, target_dir)).as_posix(), safe="/")
