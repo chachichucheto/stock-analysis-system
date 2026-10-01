@@ -22,7 +22,7 @@
 `data/packs/pack_YYYY-MM-DD.json`(入力パック)を読みます。中身は次のとおりです。
 
 - `events`:足切りを通ったイベント(ニュース最大3件+開示最大3件+進行中シナリオに関係するもの)。**見出しと URL だけ**なので、中身は URL を開いて確かめる(`media` は報じた媒体名。`urls` は直接開けるものが先頭)(`gate_reason` は通った理由、`forced_in: true` は進行中シナリオに関係するため別枠で通ったもの)
-- `themes`:全テーマの一覧(`THEMES.md`)と、それぞれの温度・最新の前提カード(無いテーマは `premise_card: null`)
+- `themes`:全テーマの一覧(`THEMES.md`)と、それぞれの温度・最新の前提カード(無いテーマは `premise_card: null`)。`price_state` は代表銘柄の騰落率(3か月・1か月の中央値と TOPIX。Python が株価から計算したもの)で、**前提カードの「織り込み度」の裏付けに使う**(上がり切ったテーマの好材料は B 級止まりになりやすい)
 - `active_scenarios`:進行中・待機中のシナリオ(確認計画の状況、候補を含む)
 - `past_cases`:過去事例ライブラリ(`knowledge/past_cases/`)。関係しそうなものを自分で選ぶ
 - `market`:関係する銘柄の株価の状態(`day_excess_sigma` = 最新日の TOPIX 超過が普段の値動きの何倍か、`return_20d` = 20営業日の騰落率、`avg_turnover_yen` = 20日平均の売買代金)

@@ -20,6 +20,7 @@ class Thresholds:
     gate_attention_pct: float = 0.95     # 足切り:過去90日のイベントの上位5%
     gate_lookback_days: int = 90
     gate_max_events: int = 3             # LLM に渡すニュースイベントの上限(進行中シナリオの関係分は別枠)
+    gate_max_events_cold_start: int = 10  # 履歴が無い立ち上げの間(比べる相手が無い間)のニュース上限(D36)
     gate_max_disclosure_events: int = 3  # 開示(TDnet・EDINET)の別枠の上限。ニュースと同じ枠で競わせると、
                                          # 媒体数の少ない開示が構造的に負けるため(2026-09-30 予行演習で確認。DECISIONS D34)
     reacted_sigma: float = 2.0           # 「反応した」:当日の TOPIX 超過が普段の値動きの2倍以上

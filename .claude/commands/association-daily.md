@@ -9,6 +9,7 @@ argument-hint: "[最小] ← 時間がない日は「最小」を付ける"
 - **日付が変わる前(0時前)に実行する。** 0時を過ぎると翌日の扱いになる。0時を過ぎてしまった場合は、`pack`・`report` に `--date YYYY-MM-DD`(前日の日付)を付ける。
 
 1. 開始を記録する:`./.venv/Scripts/python.exe -m assoc session start`
+1.5. テーマ別の代表銘柄の騰落率が古い(`knowledge/theme_returns.json` の `as_of` が7日以上前)なら、`./.venv/Scripts/python.exe scripts/theme_returns.py` で更新する(株価が古い銘柄は先に `assoc prices --codes … fill`)。
 2. 入力パックを用意する:`./.venv/Scripts/python.exe -m assoc pack`(今日の `data/packs/pack_YYYY-MM-DD.json` が既にあれば作り直さない)。
    - 引数に「最小」があれば、パックの `mode` を「最小」として扱う。
 3. `prompts/daily-v1.md` を読み、その手順どおりに作業する。出力は `data/inbox/daily_YYYY-MM-DD.json`。

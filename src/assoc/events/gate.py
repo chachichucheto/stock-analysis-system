@@ -49,6 +49,7 @@ class GateInput:
     disclosure_type: str = ""
     codes: list[str] = field(default_factory=list)
     entities: list[str] = field(default_factory=list)
+    relevance: int = 0  # 投資との関係の深さ 0〜3(events/relevance.py)。ニュースの並べ替えに使う
 
 
 def percentile_rank(value: float, history: list[float]) -> float:
@@ -170,10 +171,15 @@ def gate_events(
     # (開示は媒体数が1になりやすく、ニュースと同じ枠で注目度を競うと構造的に負けるため、枠を分ける)
     news = [t for t in passed_not_forced if not t[0].disclosure_type]
     disclosures = [t for t in passed_not_forced if t[0].disclosure_type]
-    news.sort(key=lambda t: (t[1], t[0].media_count), reverse=True)
+    news.sort(key=lambda t: (t[0].relevance, t[1], t[0].media_count), reverse=True)
     disclosures.sort(key=lambda t: (disclosure_priority(t[0].title), t[1], t[0].media_count), reverse=True)
     max_disclosure = getattr(thresholds, "gate_max_disclosure_events", thresholds.gate_max_events)
-    for group, limit, label in ((news, thresholds.gate_max_events, ""), (disclosures, max_disclosure, "開示の")):
+    # 履歴が無い立ち上げの間は、比べる相手が無いので、ニュースの上限を広げる(D36)
+    max_news = thresholds.gate_max_events
+    if len(media_history) < COLD_START_MIN_HISTORY:
+        max_news = getattr(thresholds, "gate_max_events_cold_start", max_news)
+    news = _drop_same_story(news, results)
+    for group, limit, label in ((news, max_news, ""), (disclosures, max_disclosure, "開示の")):
         for e, _score in group[limit:]:
             prev = results[e.event_id]
             results[e.event_id] = GateResult(
@@ -183,6 +189,25 @@ def gate_events(
             )
 
     return [results[e.event_id] for e in events]
+
+
+def _drop_same_story(news: list[tuple[GateInput, float]], results: dict[str, GateResult]) -> list[tuple[GateInput, float]]:
+    """並べ替えた順に見て、すでに残した記事と同じ話題(固有表現の重なりが小さい方の半分以上)のものを落とす。
+
+    同じ出来事の続報が上位を埋めて、他のテーマが入らなくなるのを防ぐ(D36)。"""
+    kept: list[tuple[GateInput, float]] = []
+    for t in news:
+        ents = set(t[0].entities)
+        same = len(ents) >= 2 and any(
+            len(ents & set(k[0].entities)) >= max(2, 0.5 * min(len(ents), len(k[0].entities))) for k in kept)
+        if same:
+            prev = results[t[0].event_id]
+            results[t[0].event_id] = GateResult(
+                event_id=t[0].event_id, passed=False, reason=f"{prev.reason}(同じ話題が上位にあるため重複として除外)",
+                attention=prev.attention, forced_in=False)
+        else:
+            kept.append(t)
+    return kept
 
 
 # 開示の優先度(暫定。株価への影響が大きく、他で代替しにくい順)。タイトルの文言で判定する。

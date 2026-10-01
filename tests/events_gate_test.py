@@ -164,9 +164,33 @@ def test_cold_start_passes_top_events_by_media_count():
     from assoc.events.gate import GateInput, gate_events
     events = [GateInput(event_id=f"e{i}", title=f"見出し{i}", novelty_hash=f"h{i}", media_count=float(i))
               for i in range(1, 6)]
-    results = gate_events(events, Thresholds(), media_history=[1.0] * 5)   # 履歴が少ない
+    results = gate_events(events, Thresholds(gate_max_events_cold_start=3), media_history=[1.0] * 5)   # 履歴が少ない
     passed = [r.event_id for r in results if r.passed]
     assert passed == ["e3", "e4", "e5"]            # 媒体数の多い順に上限3件
+
+
+def test_cold_start_widens_news_limit():
+    from assoc.config import Thresholds
+    from assoc.events.gate import GateInput, gate_events
+    events = [GateInput(event_id=f"e{i}", title=f"見出し{i}", novelty_hash=f"h{i}", media_count=float(i))
+              for i in range(1, 15)]
+    cold = [r for r in gate_events(events, Thresholds(), media_history=[1.0] * 5) if r.passed]
+    warm = [r for r in gate_events(events, Thresholds(), media_history=[float(i % 10 + 1) for i in range(60)]) if r.passed]
+    assert len(cold) == Thresholds().gate_max_events_cold_start
+    assert len(warm) <= Thresholds().gate_max_events
+
+
+def test_relevance_beats_media_count_and_same_story_is_dropped():
+    from assoc.config import Thresholds
+    from assoc.events.gate import GateInput, gate_events
+    events = [
+        GateInput(event_id="boj", title="議事要旨", novelty_hash="a", media_count=9.0, relevance=0),
+        GateInput(event_id="m1", title="Aの買収", novelty_hash="b", media_count=2.0, relevance=3, entities=["甲社", "買収"]),
+        GateInput(event_id="m2", title="Aの買収続報", novelty_hash="c", media_count=2.0, relevance=3, entities=["甲社", "買収"]),
+    ]
+    results = {r.event_id: r for r in gate_events(events, Thresholds(gate_max_events_cold_start=2), media_history=[1.0] * 5)}
+    assert results["m1"].passed and results["boj"].passed        # 関係の深い順→次に媒体数
+    assert not results["m2"].passed and "重複" in results["m2"].reason   # 同じ話題は1件に
 
 
 def test_unmeasured_indicators_do_not_inflate_score():

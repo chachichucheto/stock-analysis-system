@@ -87,9 +87,13 @@ def build_pack(app: "App", day: date) -> Path:
     events = build_events_between(app.con, window_start, window_end)
     seen = {r["novelty_hash"] for r in app.store.read("event_gate") if r.get("novelty_hash") and r.get("date") != day.isoformat()}
     hist = _attention_history(app, day)
+    from assoc.events.relevance import build_matcher
+    from assoc.master.names import CompanyMaster
+    relevance = build_matcher(CompanyMaster.from_db(app.con).names, REPO_ROOT / "docs" / "THEMES.md")
     inputs = [GateInput(event_id=e.event_id, title=e.title, novelty_hash=e.novelty_hash,
                         media_count=float(e.media_count), disclosure_type=e.disclosure_type,
-                        codes=list(e.codes), entities=list(e.entities)) for e in events]
+                        codes=list(e.codes), entities=list(e.entities),
+                        relevance=0 if e.disclosure_type else relevance(e.title)) for e in events]
     results = gate_events(inputs, app.th, media_history=hist["media_count"], gdelt_history=hist["gdelt"],
                           wiki_history=hist["wiki"], growth_history=hist["growth"], seen_novelty_hashes=seen,
                           active_codes=active_codes, active_keywords=active_keywords)
@@ -128,7 +132,19 @@ def build_pack(app: "App", day: date) -> Path:
     temps = latest_by(app.store, "theme_temperature", "theme_id")
     last_temp = max((r.get("run_date", "") for r in temps.values()), default="")
     temperature_due = not last_temp or (day - date.fromisoformat(last_temp)).days >= 7
+    # テーマ別の代表銘柄の騰落率(scripts/theme_returns.py が書く。前提カードの「織り込み度」を数字で補う)
+    tr_path = REPO_ROOT / "knowledge" / "theme_returns.json"
+    tr = json.loads(tr_path.read_text(encoding="utf-8")) if tr_path.exists() else {}
+    def _price_state(tid: str):
+        t = (tr.get("themes") or {}).get(tid)
+        if not t or not t.get("n_with_data"):
+            return None
+        r = lambda x: None if x is None else round(x, 4)
+        return {"as_of": tr.get("as_of"), "median_3m": r(t["median_3m"]), "median_1m": r(t["median_1m"]),
+                "topix_3m": r(tr.get("topix_3m")), "topix_1m": r(tr.get("topix_1m")),
+                "stocks": [{"code": x["code"], "name": x["name"], "ret_3m": r(x["ret_3m"])} for x in t["stocks"]]}
     theme_rows = [{"theme_id": tid, "name": name, "temperature": temps.get(tid, {}).get("temperature"),
+                   "price_state": _price_state(tid),
                    "premise_card": {k: cards[tid][k] for k in ("version", "market_premise", "key_numbers",
                                                                "breaking_directions")} if tid in cards else None}
                   for tid, name in themes.items()]
