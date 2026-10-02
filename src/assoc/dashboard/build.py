@@ -68,6 +68,21 @@ tr:last-child td { border-bottom: none; }
 .empty { color: var(--text-muted); padding: 12px; }
 .stars { letter-spacing: 1px; }
 a { color: var(--accent); }
+.main-tabs { display: flex; gap: 6px; margin: 4px 0 14px; border-bottom: 1px solid var(--border); }
+.main-tab-btn { padding: 8px 18px; cursor: pointer; border: 1px solid var(--border); border-bottom: none;
+  border-radius: 6px 6px 0 0; background: var(--surface-1); color: var(--text-secondary); font-size: 13px; }
+.main-tab-btn.active { background: var(--accent); color: white; border-color: var(--accent); font-weight: bold; }
+.newsbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.newsbar input, .newsbar select { background: var(--surface-1); color: var(--text-primary); border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 10px; font-size: 13px; }
+.newsbar input[type=text] { width: 260px; }
+.newsbar button { background: var(--surface-1); color: var(--text-secondary); border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
+.newsbar button:hover { border-color: var(--accent); color: var(--text-primary); }
+.kindtag { display: inline-block; padding: 0 6px; border-radius: 4px; font-size: 11px; background: var(--surface-2);
+  border: 1px solid var(--border); color: var(--text-secondary); white-space: nowrap; }
+.kindtag.disc { color: var(--warning); }
+#news-table td.t { white-space: nowrap; color: var(--text-muted); }
 """
 
 
@@ -111,6 +126,89 @@ def _site_nav(app: "App", out_dir: Path, in_folder: bool = False) -> str:
         links.append(f'<a href="{target}">{_e(label)}</a>')
     links.append(f'<a class="active" href="{quote(MIRROR_NAME) if in_folder else "#"}">モデル⑧ ニュース連想</a>')
     return '<div class="model-nav">' + "".join(links) + "</div>"
+
+
+NEWS_DAYS = 7   # ニュース一覧に載せる日数(取得した時刻で数える)
+
+
+def _news_payload(app: "App") -> tuple[str, int]:
+    """ニュース・開示の一覧を、画面側で絞り込めるように JSON にして返す(</script> を壊さない形)。
+
+    1件 = [時刻(日本時間 MM-DD HH:MM), 種類(0=ニュース, 1=開示), 媒体, 見出し, URL, 銘柄コード]
+    """
+    import json
+
+    from assoc.events.cluster import media_of
+
+    since = utcnow() - timedelta(days=NEWS_DAYS)
+    rows: list[tuple[Any, list]] = []
+    for pub, source, summary, title, url in app.con.execute(
+            "SELECT published_at, source, summary, title, url FROM news_item WHERE first_observed_at >= ? "
+            "ORDER BY published_at DESC", [since]).fetchall():
+        rows.append((pub, [pub.astimezone(JST).strftime("%m-%d %H:%M"), 0,
+                           media_of(source or "", summary or "") or (source or ""), title or "", url or "", ""]))
+    for pub, source, code, name, title, url in app.con.execute(
+            "SELECT published_at, source, code, company_name, title, url FROM disclosure WHERE first_observed_at >= ? "
+            "ORDER BY published_at DESC", [since]).fetchall():
+        rows.append((pub, [pub.astimezone(JST).strftime("%m-%d %H:%M"), 1, source or "",
+                           (f"{name} " if name else "") + (title or ""), url or "", code or ""]))
+    rows.sort(key=lambda r: r[0], reverse=True)
+    body = json.dumps([r[1] for r in rows], ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
+    return body, len(rows)
+
+
+NEWS_JS = """
+(function () {
+  var D = window.NEWS_DATA || [], PAGE = 200, page = 0, shown = [];
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
+  var media = {}; D.forEach(function (r) { if (r[1] === 0 && r[2]) media[r[2]] = (media[r[2]] || 0) + 1; });
+  var ms = Object.keys(media).sort(function (a, b) { return media[b] - media[a]; });
+  $('nf-media').innerHTML = '<option value="">媒体: すべて</option>' + ms.slice(0, 80).map(function (m) {
+    return '<option value="' + esc(m) + '">' + esc(m) + ' (' + media[m] + ')</option>'; }).join('');
+  var days = {}; D.forEach(function (r) { days[r[0].slice(0, 5)] = 1; });
+  $('nf-day').innerHTML = '<option value="">日付: すべて</option>' + Object.keys(days).sort().reverse().map(function (d) {
+    return '<option value="' + d + '">' + d + '</option>'; }).join('');
+  function apply() {
+    var q = $('nf-q').value.trim().toLowerCase(), k = $('nf-kind').value, m = $('nf-media').value, d = $('nf-day').value;
+    var words = q ? q.split(/\\s+/) : [];
+    shown = D.filter(function (r) {
+      if (k !== '' && String(r[1]) !== k) return false;
+      if (m && r[2] !== m) return false;
+      if (d && r[0].slice(0, 5) !== d) return false;
+      if (words.length) { var h = (r[3] + ' ' + r[2] + ' ' + r[5]).toLowerCase();
+        for (var i = 0; i < words.length; i++) if (h.indexOf(words[i]) < 0) return false; }
+      return true;
+    });
+    page = 0; render();
+  }
+  function render() {
+    var from = page * PAGE, rows = shown.slice(from, from + PAGE);
+    $('nt-body').innerHTML = rows.map(function (r) {
+      var tag = r[1] === 1 ? '<span class="kindtag disc">開示</span>' : '<span class="kindtag">ニュース</span>';
+      var link = r[4] ? '<a href="' + esc(r[4]) + '" target="_blank" rel="noopener noreferrer">' + esc(r[3]) + '</a>' : esc(r[3]);
+      return '<tr><td class="t">' + esc(r[0]) + '</td><td>' + tag + '</td><td>' + esc(r[2]) + '</td><td>' + link + '</td><td>' + esc(r[5]) + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="empty">該当するニュースはありません</td></tr>';
+    var last = Math.max(0, Math.ceil(shown.length / PAGE) - 1);
+    $('nf-count').textContent = shown.length + ' 件(全 ' + D.length + ' 件中)';
+    $('nf-pos').textContent = (page + 1) + ' / ' + (last + 1);
+    $('nf-prev').disabled = page <= 0; $('nf-next').disabled = page >= last;
+  }
+  ['nf-q', 'nf-kind', 'nf-media', 'nf-day'].forEach(function (id) { $(id).addEventListener(id === 'nf-q' ? 'input' : 'change', apply); });
+  $('nf-prev').onclick = function () { page--; render(); window.scrollTo(0, 0); };
+  $('nf-next').onclick = function () { page++; render(); window.scrollTo(0, 0); };
+  $('nf-reset').onclick = function () { $('nf-q').value = ''; $('nf-kind').value = ''; $('nf-media').value = ''; $('nf-day').value = ''; apply(); };
+  apply();
+})();
+function showMainTab(name) {
+  ['dash', 'news'].forEach(function (t) {
+    document.getElementById('tab-' + t).hidden = (t !== name);
+    document.getElementById('btn-' + t).classList.toggle('active', t === name);
+  });
+  try { history.replaceState(null, '', name === 'news' ? '#news' : location.pathname); } catch (e) {}
+}
+if (location.hash === '#news') showMainTab('news');
+"""
 
 
 def _e(x: Any) -> str:
@@ -287,6 +385,8 @@ def build_dashboard(app: "App", day: date | None = None) -> Path:
     report_link = f'report_{last_date}.md' if last_date else None
     generated = utcnow().astimezone(JST).strftime("%Y-%m-%d %H:%M")
 
+    news_json, n_news = _news_payload(app)
+
     html = f"""<!doctype html>
 <html lang="ja"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -296,6 +396,9 @@ def build_dashboard(app: "App", day: date | None = None) -> Path:
 <header><h1>連想ダッシュボード</h1>
 <span class="meta">作成 {generated} / 最新のレポート {_e(last_date or 'まだありません')}
 {f' / <a href="{_e(report_link)}">連想レポートを開く</a>' if report_link else ''}</span></header>
+<div class="main-tabs"><div class="main-tab-btn active" id="btn-dash" onclick="showMainTab('dash')">ダッシュボード</div>
+<div class="main-tab-btn" id="btn-news" onclick="showMainTab('news')">ニュース一覧({n_news})</div></div>
+<div id="tab-dash">
 <nav><a href="#summary">要約</a><a href="#picks">本命</a><a href="#ranking">ランキング</a><a href="#scenarios">シナリオ</a>
 <a href="#health">継続性チェック</a><a href="#signals">売りのサイン</a><a href="#history">本命の履歴</a><a href="#collect">収集の状態</a><a href="#runs">実行記録</a></nav>
 <main>
@@ -327,7 +430,23 @@ def build_dashboard(app: "App", day: date | None = None) -> Path:
         "まだ収集していません(python -m assoc collect)")}</section>
 <section id="runs"><h2>実行記録(夜の手順)</h2>
 {_table(["日付", "実行", "手順", "所要(分)", "見送った理由"], run_rows, {3}, "まだ記録がありません")}</section>
-</main></body></html>
+</main>
+</div>
+<div id="tab-news" hidden>
+<section><h2>ニュース一覧(直近{NEWS_DAYS}日に取得したもの)</h2>
+<p class="note">連想モデルが自動で集めたニュースと開示の全件。見出しをクリックすると元の記事を開く(Google News は中継URLのため開けないことがある)。</p>
+<div class="newsbar"><input type="text" id="nf-q" placeholder="キーワード(スペースで AND) 例: TOB カカクコム">
+<select id="nf-kind"><option value="">種類: すべて</option><option value="0">ニュース</option><option value="1">開示(TDnet・EDINET)</option></select>
+<select id="nf-media"></select><select id="nf-day"></select><button id="nf-reset" type="button">リセット</button>
+<span class="note" id="nf-count"></span></div>
+<div class="table-wrap"><table id="news-table"><thead><tr><th>取得 / 公表</th><th>種類</th><th>媒体</th><th>見出し</th><th>銘柄</th></tr></thead>
+<tbody id="nt-body"></tbody></table></div>
+<div class="newsbar" style="margin-top:10px"><button id="nf-prev" type="button">前の200件</button>
+<span class="note" id="nf-pos"></span><button id="nf-next" type="button">次の200件</button></div></section>
+</div>
+<script>window.NEWS_DATA = {news_json};</script>
+<script>{NEWS_JS}</script>
+</body></html>
 """
     path = app.dir("reports") / "dashboard.html"
     path.write_text(html, encoding="utf-8")
