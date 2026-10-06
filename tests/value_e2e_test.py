@@ -135,3 +135,14 @@ def test_check_cli_reports_and_exit_code(env, capsys):
         FIN_HEADER + "1000,2026-03-31,2026-03-01,FY,1,1,0,0,0,1,1,1,1,0,1,1,1,1000\n", encoding="utf-8")
     assert run(env, "check") == 1
     assert "先読み" in capsys.readouterr().out
+
+
+def test_screen_does_not_rebuild_an_existing_pack(env):
+    assert run(env, "screen") == 0
+    path = env["value"] / f"pack_{ASOF}.json"
+    path.write_text('{"marker": "読み取り済みのパック"}', encoding="utf-8")
+    assert run(env, "screen") == 0
+    assert "読み取り済みのパック" in path.read_text(encoding="utf-8")        # 作り直さない
+    path.unlink()
+    assert run(env, "screen") == 0
+    assert json.loads(path.read_text(encoding="utf-8"))["items"]            # 消せば作り直す

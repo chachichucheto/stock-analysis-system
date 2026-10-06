@@ -67,10 +67,8 @@ def _forward(stock: pd.DataFrame, topix_ser: pd.Series, asof: date, entry: float
     if fwd.empty:
         return None
     t0 = float(topix_ser.loc[:asof].iloc[-1])
-    ex = []
-    for d, c in zip(fwd["date"], fwd["close"]):
-        t = float(topix_ser.loc[:d].iloc[-1])
-        ex.append((c / entry - 1.0) - (t / t0 - 1.0))
+    t = topix_ser.reindex(fwd["date"].tolist(), method="ffill").to_numpy(dtype=float)   # 休場日の TOPIX は直前の値
+    ex = ((fwd["close"].to_numpy(dtype=float) / entry - 1.0) - (t / t0 - 1.0)).tolist()
     last = fwd.iloc[-1]["date"]
     gap = sum(1 for k in range(1, (end_h - last).days + 1) if is_business_day(last + timedelta(days=k)))
     return {"excess_max": max(ex), "excess_final": ex[-1], "truncated": gap > 3, "last_date": last}

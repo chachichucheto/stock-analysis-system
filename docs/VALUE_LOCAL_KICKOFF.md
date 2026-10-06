@@ -14,7 +14,7 @@
 
 ## 0. 前提と守ること
 
-- **クラウドからは外部のデータ元(EDINET、TDnet、Yahoo Finance、各ブログなど)に一度も接続できていません。** このモデルのコードは、合成データのテスト(クラウドでは248件)でしか動かしていません。**実データとの食い違いが必ずあります。これを見つけて直すのが最大の仕事です。**
+- **クラウドからは外部のデータ元(EDINET、TDnet、Yahoo Finance、各ブログなど)に一度も接続できていません。** このモデルのコードは、合成データのテスト(クラウドでは249件)でしか動かしていません。**実データとの食い違いが必ずあります。これを見つけて直すのが最大の仕事です。**
 - **ユーザーの既存システム(ファンダメンタルズ分析、需給分析、株価DB)は読み取り専用です。** 変更・上書き・削除は一切しない。
 - `data\` と `config\config.yaml` は git に入れない(`.gitignore` 済み)。**財務データ、株価、開示の本文、API キー、個人情報をコミットしない。**
 - 相手先に負荷をかけない。取得の間隔を守り、個人利用の範囲で使う。EDINET・TDnet の利用規約を確認する。
@@ -31,7 +31,7 @@
 
 1. ブランチを取り込む:`git clone -b claude/youthful-ride-lw1xks https://github.com/chachichucheto/stock-analysis-system.git`(ニュース連想モデルで取り込み済みなら、`git fetch` と `git checkout claude/youthful-ride-lw1xks`)。既存システムとは別のフォルダに置く。
 2. セットアップ:`powershell -ExecutionPolicy Bypass -File scripts\windows\setup.ps1`(済んでいれば `pip install -r requirements.txt` だけでよい)。
-3. `.\.venv\Scripts\python.exe -m pytest -q`。**248件(以降の変更で増える)がすべて通ることを確認する。** 通らなければ原因を報告する(Windows 固有の問題の可能性)。
+3. `.\.venv\Scripts\python.exe -m pytest -q`。**249件(以降の変更で増える)がすべて通ることを確認する。** 通らなければ原因を報告する(Windows 固有の問題の可能性)。
 4. `config\config.yaml` に `value:` の節を足す(`config\config.example.yaml` の末尾を参照)。`capital_yen` は**ユーザーに総資金のおおよそを聞く**(株数の上限の計算に使う。0なら出さない)。
 
 ### フェーズB データの用意【最重要・最大の作業】

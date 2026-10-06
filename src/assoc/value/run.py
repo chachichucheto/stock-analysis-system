@@ -103,6 +103,11 @@ def _fact(x: Any) -> Any:
 
 
 def build_pack(env: ValueEnv, asof: date) -> Path:
+    """その日の入力パックを作る。**すでにあれば作り直さない**(その日に LLM が読んだ内容と、確定時の照合元を変えないため)。
+    データを直して作り直したいときは、パックのファイルを消してから実行する。"""
+    path = env.dir / f"pack_{asof}.json"
+    if path.exists():
+        return path
     cands = compute_candidates(env, asof)
     pre = prelist_for_llm(cands, env.th)
     items = []
@@ -114,7 +119,6 @@ def build_pack(env: ValueEnv, asof: date) -> Path:
                       "disclosures": _disclosures(env.app, c.code, asof)})
     pack = {"version": PACK_VERSION, "asof": asof.isoformat(), "mode": "通常" if items else "該当なし",
             "universe_size": len(env.universe.members(asof)), "screened_hits": len(cands), "items": items}
-    path = env.dir / f"pack_{asof}.json"
     path.write_text(json.dumps(pack, ensure_ascii=False, indent=1), encoding="utf-8")
     # 後から「その日に何を候補にしたか」を数えられるよう、機械だけの候補を追記専用で残す(重複は書かない)
     done = {r["code"] for r in env.app.store.read("value_candidate") if r["asof"] == asof.isoformat()}
