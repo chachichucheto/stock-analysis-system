@@ -157,6 +157,8 @@ def run_backtest(universe: Universe, fin: FinancialsStore, prices: PriceSource, 
             counted = count_types(screens)
             prim = fwd[th.horizon_days]
             extra = {f"excess_final_{h}": (fwd[h]["excess_final"] if fwd[h] else float("nan")) for h in th.horizons}
+            fa = screens["A"].facts
+            extra.update({"netnet": fa.get("netnet"), "pbr": fa.get("pbr"), "equity_ratio": fa.get("equity_ratio")})
             rows.append({**extra, **{"asof": asof, "code": u.code, "sector33": u.sector33, "mcap": snap.mcap,
                          "hit_A": screens["A"].hit, "hit_B": screens["B"].hit, "hit_C": screens["C"].hit,
                          "hit_D": screens["D"].hit, "n_types": len(counted), "types": "".join(counted),
@@ -222,12 +224,20 @@ def run_price_backtest(universe: Universe, prices: PriceSource, topix: pd.DataFr
             dev = metrics.ma_deviation(sliced, th.ma_window)
             if dev is None:
                 continue
+            # 株価だけで作れる特徴(型B・Cの代用や、探索の切り口に使う)。閾値は後から変えられるよう、値のまま残す
+            closes = sliced["close"].to_numpy(dtype=float)
+            vol60 = float(np.std(np.diff(closes[-61:]) / closes[-61:-1])) if n >= 62 else float("nan")
+            feats = {"bars": n, "drawdown_5y": metrics.drawdown_from_peak(sliced, th.cyc_peak_window_days),
+                     "ret_20": metrics.ret_over(sliced, 20), "ret_60": metrics.ret_over(sliced, 60),
+                     "vol_surge": metrics.volume_surge(sliced, th.surge_mult, th.surge_within_days, th.surge_avg_window),
+                     "vol_60": vol60}
             fwd = _forward(df, topix_ser, asof, price, th.horizons, th.horizon_days, u.delisted_date, ends[asof])
             if fwd is None:
                 no_forward += 1
                 continue
             prim = fwd[th.horizon_days]
             row = {f"excess_final_{h}": (fwd[h]["excess_final"] if fwd[h] else float("nan")) for h in th.horizons}
+            row.update(feats)
             row.update({"asof": asof, "code": u.code, "sector33": u.sector33, "turnover": turnover, "deviation": dev,
                         "hit_A": False, "hit_B": False, "hit_C": False, "hit_D": dev <= th.sector_deviation(u.sector33),
                         "n_types": 0, "types": "", "moved": prim["excess_max"] >= th.moved_excess,

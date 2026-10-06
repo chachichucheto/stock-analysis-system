@@ -290,6 +290,7 @@ def test_price_backtest_detects_planted_oversold_rebound():
     assert res.warnings == []
     d = res.obs[res.obs["hit_D"]]
     assert set(d["code"]) == {f"R{i:03d}" for i in range(6)} and d["moved"].all()
+    assert {"bars", "drawdown_5y", "ret_20", "ret_60", "vol_surge", "vol_60", "deviation"} <= set(res.obs.columns)
     s = res.summary.set_index("group")
     assert s.loc["D", "verdict"].startswith("ベースラインより高い")
     assert s.loc["A", "verdict"] == "該当なし"                                  # 財務が要る型は該当しない
