@@ -306,3 +306,14 @@ def test_price_backtest_filters_and_survivorship_warning():
     assert any("生存者バイアス" in w and "型D" in w for w in res.warnings)
     with pytest.raises(ValueError):
         bt.run_price_backtest(uni, px, TOPIX, TEST_DATES[:6], TH, require_delisted=True)
+
+
+def test_full_backtest_records_selection_features_even_when_some_fields_are_missing():
+    """選定ルールの検証用の特徴(営業利益・希薄化・出来高の兆しなど)を残す。現預金や有利子負債が欠けた銘柄でも落ちない。"""
+    uni = Universe([universe_row("M001"), universe_row("M002")])
+    fins = store(fin_row("M001", period_end=date(2021, 3, 31), disclosed=date(2021, 5, 14)),
+                 fin_row("M002", period_end=date(2021, 3, 31), disclosed=date(2021, 5, 14), cash=None, interest_debt=None))
+    frames = FramePriceSource({c: frame(DAYS, flat_prices(350.0)) for c in ("M001", "M002")})
+    res = bt.run_backtest(uni, fins, frames, TOPIX, TEST_DATES[:3], ValueThresholds(permutation_draws=50))
+    assert {"oi_ttm", "ni_ttm", "oi_yoy", "dilution", "cash_over_debt", "vol_surge", "ret_60", "deviation"} <= set(res.obs.columns)
+    assert set(res.obs["code"]) <= {"M001", "M002"}

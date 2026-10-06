@@ -159,6 +159,13 @@ def run_backtest(universe: Universe, fin: FinancialsStore, prices: PriceSource, 
             extra = {f"excess_final_{h}": (fwd[h]["excess_final"] if fwd[h] else float("nan")) for h in th.horizons}
             fa = screens["A"].facts
             extra.update({"netnet": fa.get("netnet"), "pbr": fa.get("pbr"), "equity_ratio": fa.get("equity_ratio")})
+            f = snap.fin
+            extra.update(_price_feats(snap.prices, th))
+            extra.update({"oi_ttm": f.operating_income_ttm, "ni_ttm": f.net_income_ttm,
+                          "oi_yoy": metrics.yoy(f.operating_income_ttm, snap.fin_year_ago.operating_income_ttm if snap.fin_year_ago else None),
+                          "dilution": metrics.dilution(f, snap.fin_year_ago),
+                          "cash_over_debt": ((metrics.liquid_cash_like(f) or 0.0) / f.interest_debt)
+                          if f.interest_debt and metrics.liquid_cash_like(f) is not None else None})
             rows.append({**extra, **{"asof": asof, "code": u.code, "sector33": u.sector33, "mcap": snap.mcap,
                          "hit_A": screens["A"].hit, "hit_B": screens["B"].hit, "hit_C": screens["C"].hit,
                          "hit_D": screens["D"].hit, "n_types": len(counted), "types": "".join(counted),
@@ -177,6 +184,17 @@ def run_backtest(universe: Universe, fin: FinancialsStore, prices: PriceSource, 
         warnings.append(f"株価が途中で途切れた観測 {trunc}件は、最後の終値で評価しています"
                         "(上場廃止の実際の清算値より楽観的な可能性)")
     return BacktestResult(obs, summarize(obs, th), warnings, horizon_table(obs, th))
+
+
+def _price_feats(sliced: pd.DataFrame, th: ValueThresholds) -> dict:
+    """株価だけで作れる特徴(型の代用や、選定ルールの検証に使う)。値のまま残し、閾値は後から変えられる。"""
+    n = len(sliced)
+    closes = sliced["close"].to_numpy(dtype=float)
+    vol60 = float(np.std(np.diff(closes[-61:]) / closes[-61:-1])) if n >= 62 else float("nan")
+    return {"bars": n, "drawdown_5y": metrics.drawdown_from_peak(sliced, th.cyc_peak_window_days),
+            "ret_20": metrics.ret_over(sliced, 20), "ret_60": metrics.ret_over(sliced, 60),
+            "vol_surge": metrics.volume_surge(sliced, th.surge_mult, th.surge_within_days, th.surge_avg_window),
+            "vol_60": vol60, "deviation": metrics.ma_deviation(sliced, th.ma_window)}
 
 
 def run_price_backtest(universe: Universe, prices: PriceSource, topix: pd.DataFrame, dates: list[date],
@@ -224,13 +242,7 @@ def run_price_backtest(universe: Universe, prices: PriceSource, topix: pd.DataFr
             dev = metrics.ma_deviation(sliced, th.ma_window)
             if dev is None:
                 continue
-            # 株価だけで作れる特徴(型B・Cの代用や、探索の切り口に使う)。閾値は後から変えられるよう、値のまま残す
-            closes = sliced["close"].to_numpy(dtype=float)
-            vol60 = float(np.std(np.diff(closes[-61:]) / closes[-61:-1])) if n >= 62 else float("nan")
-            feats = {"bars": n, "drawdown_5y": metrics.drawdown_from_peak(sliced, th.cyc_peak_window_days),
-                     "ret_20": metrics.ret_over(sliced, 20), "ret_60": metrics.ret_over(sliced, 60),
-                     "vol_surge": metrics.volume_surge(sliced, th.surge_mult, th.surge_within_days, th.surge_avg_window),
-                     "vol_60": vol60}
+            feats = _price_feats(sliced, th)
             fwd = _forward(df, topix_ser, asof, price, th.horizons, th.horizon_days, u.delisted_date, ends[asof])
             if fwd is None:
                 no_forward += 1
