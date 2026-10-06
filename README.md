@@ -5,7 +5,7 @@
 ファンダメンタルズ分析・需給分析に続く、3つ目のモデル。
 
 > **4つ目のモデル(割安カタリスト)** も同じリポジトリにある。資産に対して割安な小型株で、再評価のきっかけ(カタリスト)がありそうなものを探す。
-> 有名個人投資家の手法の調査をもとにした設計で、**実データでの検証はまだ**(→ [docs/VALUE_DESIGN.md](docs/VALUE_DESIGN.md)、ローカルへの指示は [docs/VALUE_LOCAL_KICKOFF.md](docs/VALUE_LOCAL_KICKOFF.md))。
+> 有名個人投資家の手法の調査をもとにした設計で、**実データでの検証はまだ。現時点では「勝てる」と言えない**(→ [docs/VALUE_VALIDATION.md](docs/VALUE_VALIDATION.md)、設計は [docs/VALUE_DESIGN.md](docs/VALUE_DESIGN.md)、ローカルへの指示は [docs/VALUE_LOCAL_KICKOFF.md](docs/VALUE_LOCAL_KICKOFF.md))。
 
 | 文書 | 内容 |
 |---|---|
@@ -17,6 +17,7 @@
 | [docs/THEMES.md](docs/THEMES.md) | テーマの一覧 |
 | [docs/ANALYSIS_PLAN.md](docs/ANALYSIS_PLAN.md) | 答え合わせの定義と基準 |
 | [docs/INVESTOR_RESEARCH.md](docs/INVESTOR_RESEARCH.md) | 有名個人投資家の手法の調査(割安カタリストの元) |
+| [docs/VALUE_VALIDATION.md](docs/VALUE_VALIDATION.md) | 同・「勝てるのか」の検証の記録と、事前登録の合格基準(最初に読む) |
 | [docs/VALUE_DESIGN.md](docs/VALUE_DESIGN.md) | 割安カタリスト・モデルの設計 |
 | [docs/VALUE_LOCAL_KICKOFF.md](docs/VALUE_LOCAL_KICKOFF.md) | 同・ローカルの Claude Code への作業指示書 |
 | [docs/VALUE_CATALYST_PLAN.md](docs/VALUE_CATALYST_PLAN.md) | 同・最初のたたき台(経緯) |

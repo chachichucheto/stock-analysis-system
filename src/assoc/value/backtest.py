@@ -13,10 +13,10 @@
 from __future__ import annotations
 
 import math
-import random
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 
+import numpy as np
 import pandas as pd
 
 from assoc.market.prices import PriceSource
@@ -36,6 +36,7 @@ class BacktestResult:
     obs: pd.DataFrame
     summary: pd.DataFrame
     warnings: list[str] = field(default_factory=list)
+    horizons: pd.DataFrame = field(default_factory=pd.DataFrame)
 
 
 def month_end_dates(start: date, end: date) -> list[date]:
@@ -62,16 +63,41 @@ def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
     return (center - half, center + half)
 
 
-def _forward(stock: pd.DataFrame, topix_ser: pd.Series, asof: date, entry: float, end_h: date) -> dict | None:
-    fwd = stock[(stock["date"] > asof) & (stock["date"] <= end_h)]
-    if fwd.empty:
-        return None
+def _forward(stock: pd.DataFrame, topix_ser: pd.Series, asof: date, entry: float, hs: tuple[int, ...],
+             primary: int, delisted: date | None) -> dict | None:
+    """基準日の終値から、各期間 h(営業日)までの TOPIX 超過を計算する。
+
+    - 期間の終わりが TOPIX の最終日を超える → その期間は未確定(NaN)。直近の基準日で、長い期間が空くのは正常
+    - 株価が期間の途中で途切れた → 上場廃止なら最後の終値で評価して数える(truncated)。そうでなければ未確定(NaN)
+    - 主な期間(primary)が未確定なら None(観測にしない)
+    """
     t0 = float(topix_ser.loc[:asof].iloc[-1])
-    t = topix_ser.reindex(fwd["date"].tolist(), method="ffill").to_numpy(dtype=float)   # 休場日の TOPIX は直前の値
-    ex = ((fwd["close"].to_numpy(dtype=float) / entry - 1.0) - (t / t0 - 1.0)).tolist()
-    last = fwd.iloc[-1]["date"]
-    gap = sum(1 for k in range(1, (end_h - last).days + 1) if is_business_day(last + timedelta(days=k)))
-    return {"excess_max": max(ex), "excess_final": ex[-1], "truncated": gap > 3, "last_date": last}
+    topix_last = topix_ser.index[-1]
+    fwd_all = stock[(stock["date"] > asof) & (stock["date"] <= add_business_days(asof, max(hs)))]
+    if fwd_all.empty:
+        return None
+    t = topix_ser.reindex(fwd_all["date"].tolist(), method="ffill").to_numpy(dtype=float)
+    ex_all = (fwd_all["close"].to_numpy(dtype=float) / entry - 1.0) - (t / t0 - 1.0)
+    dates = fwd_all["date"].tolist()
+    out: dict = {}
+    for h in hs:
+        end_h = add_business_days(asof, h)
+        if end_h > topix_last:
+            out[h] = None
+            continue
+        idx = [i for i, d in enumerate(dates) if d <= end_h]
+        if not idx:
+            out[h] = None
+            continue
+        last = dates[idx[-1]]
+        gap = sum(1 for k in range(1, (end_h - last).days + 1) if is_business_day(last + timedelta(days=k)))
+        truncated = gap > 3
+        if truncated and not (delisted is not None and delisted <= end_h + timedelta(days=7)):
+            out[h] = None                                  # 上場廃止ではないのに株価が無い=データの欠け
+            continue
+        sub = ex_all[: idx[-1] + 1]
+        out[h] = {"excess_max": float(sub.max()), "excess_final": float(sub[-1]), "truncated": truncated}
+    return out if out.get(primary) is not None else None
 
 
 def run_backtest(universe: Universe, fin: FinancialsStore, prices: PriceSource, topix: pd.DataFrame,
@@ -99,7 +125,6 @@ def run_backtest(universe: Universe, fin: FinancialsStore, prices: PriceSource, 
         if asof not in topix_ser.index:
             skipped_dates.append(asof)
             continue
-        end_h = add_business_days(asof, th.horizon_days)
         for u in universe.members(asof):
             df = load(u.code)
             if df.empty:
@@ -117,16 +142,18 @@ def run_backtest(universe: Universe, fin: FinancialsStore, prices: PriceSource, 
             if any(d.severity == "block" for d in dangers):
                 continue
             screens = run_screens(snap, th)
-            fwd = _forward(df, topix_ser, asof, snap.price, end_h)
+            fwd = _forward(df, topix_ser, asof, snap.price, th.horizons, th.horizon_days, u.delisted_date)
             if fwd is None:
                 no_forward += 1
                 continue
             counted = count_types(screens)
-            rows.append({"asof": asof, "code": u.code, "sector33": u.sector33, "mcap": snap.mcap,
+            prim = fwd[th.horizon_days]
+            extra = {f"excess_final_{h}": (fwd[h]["excess_final"] if fwd[h] else float("nan")) for h in th.horizons}
+            rows.append({**extra, **{"asof": asof, "code": u.code, "sector33": u.sector33, "mcap": snap.mcap,
                          "hit_A": screens["A"].hit, "hit_B": screens["B"].hit, "hit_C": screens["C"].hit,
                          "hit_D": screens["D"].hit, "n_types": len(counted), "types": "".join(counted),
-                         "moved": fwd["excess_max"] >= th.moved_excess, "excess_max": fwd["excess_max"],
-                         "excess_final": fwd["excess_final"], "truncated": fwd["truncated"]})
+                         "moved": prim["excess_max"] >= th.moved_excess, "excess_max": prim["excess_max"],
+                         "excess_final": prim["excess_final"], "truncated": prim["truncated"]}})
     obs = pd.DataFrame(rows)
     if skipped_dates:
         warnings.append(f"TOPIX の株価が無く、検証から外した基準日: {len(skipped_dates)}日")
@@ -139,7 +166,36 @@ def run_backtest(universe: Universe, fin: FinancialsStore, prices: PriceSource, 
     if trunc:
         warnings.append(f"株価が途中で途切れた観測 {trunc}件は、最後の終値で評価しています"
                         "(上場廃止の実際の清算値より楽観的な可能性)")
-    return BacktestResult(obs, summarize(obs, th), warnings)
+    return BacktestResult(obs, summarize(obs, th), warnings, horizon_table(obs, th))
+
+
+def horizon_table(obs: pd.DataFrame, th: ValueThresholds) -> pd.DataFrame:
+    """型ごと・期間ごとに、日付ごとの比較(date_paired_lift)で、ベースラインとの超過リターンの差を見る。
+
+    「動いた割合」は主な期間(20営業日)だけの見方。A・B のように数か月かけて再評価される型は、
+    長い期間(60・120・250営業日)の超過リターンで測らないと、効果があっても「差なし」になる。
+    """
+    rows = []
+    for g in GROUPS:
+        mask = _mask(obs, g)
+        for h in th.horizons:
+            col = f"excess_final_{h}"
+            valid = obs[col].notna()
+            sub = obs[mask & valid]
+            r = date_paired_lift(obs, mask, col)
+            if sub.empty:
+                verdict = "該当なし"
+            elif r["n_dates"] < th.min_dates:
+                verdict = f"基準日数不足({r['n_dates']}日<{th.min_dates}日。結論を出さない)"
+            elif r["t"] > 2.0 and r["lift"] > 0:
+                verdict = "ベースラインより高い(要・別期間での再確認)"
+            else:
+                verdict = "ベースラインと差があるとは言えない"
+            rows.append({"group": g, "horizon": h, "n": len(sub), "n_dates": r["n_dates"],
+                         "mean_excess": float(sub[col].mean()) if len(sub) else float("nan"),
+                         "baseline_mean": float(obs.loc[valid, col].mean()) if valid.any() else float("nan"),
+                         "lift": r["lift"], "t": r["t"], "pos_share": r["pos_share"], "verdict": verdict})
+    return pd.DataFrame(rows)
 
 
 def _mask(obs: pd.DataFrame, group: str) -> pd.Series:
@@ -155,18 +211,63 @@ def _mask(obs: pd.DataFrame, group: str) -> pd.Series:
     raise ValueError(group)
 
 
+def perm_p_value(obs: pd.DataFrame, mask: pd.Series, draws: int, seed: int, stratified: bool = True) -> float:
+    """「ベースラインから同じ数を無作為に選んだとき、これ以上の数が動く確率」(片側)。
+
+    stratified=True(既定)は、**日付ごと**に、その日のベースラインから、その日の該当数だけ抽出する。
+    同じ日の銘柄は値動きが連動する(相場の地合い)ため、日付をまたいで無作為に混ぜる検定は、
+    地合いの良い時期に該当が偏っただけで「有意」と出る(偽陽性が増える)。層別にすると、地合いの影響が消える。
+    抽出は超幾何分布で厳密に行う(速い)。
+    """
+    sub = obs[mask]
+    if sub.empty:
+        return float("nan")
+    rng = np.random.default_rng(seed)
+    observed = int(sub["moved"].sum())
+    if stratified:
+        total = np.zeros(draws, dtype=np.int64)
+        counts = sub.groupby("asof").size()
+        for d, nd in counts.items():
+            base = obs.loc[obs["asof"] == d, "moved"]
+            m, k = len(base), int(base.sum())
+            total += rng.hypergeometric(k, m - k, nd, size=draws) if nd < m else k
+    else:
+        m, k, nd = len(obs), int(obs["moved"].sum()), len(sub)
+        if nd >= m:
+            return float("nan")
+        total = rng.hypergeometric(k, m - k, nd, size=draws)
+    return float((int((total >= observed).sum()) + 1) / (draws + 1))
+
+
+def date_paired_lift(obs: pd.DataFrame, mask: pd.Series, col: str) -> dict[str, float]:
+    """日付ごとに「該当群の平均 − その日のベースライン平均」を取り、日付をまたいで平均する(Fama-MacBeth 流)。
+
+    日付を1つの観測として扱うので、同日の連動(地合い)に左右されない。t値と、プラスだった日の割合を返す。
+    """
+    sub = obs[mask & obs[col].notna()]
+    base = obs[obs[col].notna()].groupby("asof")[col].mean()
+    sel = sub.groupby("asof")[col].mean()
+    diff = (sel - base.reindex(sel.index)).dropna()
+    n = len(diff)
+    if n < 2:
+        return {"lift": float("nan"), "t": float("nan"), "n_dates": n, "pos_share": float("nan")}
+    sd = float(diff.std(ddof=1))
+    t = float(diff.mean() / (sd / math.sqrt(n))) if sd > 0 else (float("inf") if diff.mean() > 0 else 0.0)
+    return {"lift": float(diff.mean()), "t": t, "n_dates": n, "pos_share": float((diff > 0).mean())}
+
+
 def summarize(obs: pd.DataFrame, th: ValueThresholds) -> pd.DataFrame:
     """型ごとの「動いた」割合を、ベースライン(同じ足切りを通った全銘柄)と比べる。"""
-    base_moved = obs["moved"].tolist()
-    base_rate = sum(base_moved) / len(base_moved)
-    rng = random.Random(th.seed)
+    base_moved = obs["moved"]
+    base_rate = float(base_moved.mean())
+    lo0, hi0 = wilson(int(base_moved.sum()), len(obs))
     out = [{"group": "ベースライン(全体)", "n": len(obs), "n_dates": obs["asof"].nunique(),
-            "moved_rate": base_rate, "ci_low": wilson(sum(base_moved), len(base_moved))[0],
-            "ci_high": wilson(sum(base_moved), len(base_moved))[1], "mean_excess": obs["excess_final"].mean(),
+            "moved_rate": base_rate, "ci_low": lo0, "ci_high": hi0, "mean_excess": obs["excess_final"].mean(),
             "median_excess": obs["excess_final"].median(), "baseline_rate": base_rate, "lift": 0.0,
             "p_value": float("nan"), "verdict": "—"}]
     for g in GROUPS:
-        sub = obs[_mask(obs, g)]
+        mask = _mask(obs, g)
+        sub = obs[mask]
         n = len(sub)
         if n == 0:
             out.append({"group": g, "n": 0, "n_dates": 0, "moved_rate": float("nan"), "ci_low": float("nan"),
@@ -176,11 +277,7 @@ def summarize(obs: pd.DataFrame, th: ValueThresholds) -> pd.DataFrame:
         k = int(sub["moved"].sum())
         rate = k / n
         lo, hi = wilson(k, n)
-        p = float("nan")
-        if n < len(base_moved):
-            ge = sum(1 for _ in range(th.permutation_draws)
-                     if sum(rng.sample(base_moved, n)) / n >= rate)
-            p = (ge + 1) / (th.permutation_draws + 1)
+        p = perm_p_value(obs, mask, th.permutation_draws, th.seed)
         if n < th.min_samples:
             verdict = "サンプル不足(結論を出さない)"
         elif p == p and p < 0.05 and rate > base_rate:
@@ -209,9 +306,22 @@ def render_markdown(res: BacktestResult, th: ValueThresholds, start: date, end: 
             lines.append(f"| {r.group} | {r.n} | {r.n_dates} | {f(r.moved_rate)} | {f(r.ci_low)}〜{f(r.ci_high)} | "
                          f"{f(r.baseline_rate)} | {f(r.lift)} | {f(r.p_value, False)} | "
                          f"{f(r.mean_excess)}/{f(r.median_excess)} | {r.verdict} |")
+        if not res.horizons.empty:
+            lines += ["", "## 期間別(日付ごとの比較。型の性格に合った期間で見る)", "",
+                      "- 各基準日について「該当群の平均超過リターン − その日のベースラインの平均」を出し、日付をまたいで平均する(t値は日付を1観測としたもの)。",
+                      "- A・B は数か月〜1年で再評価される想定なので、120・250営業日の行を主に見る。C・D は20・60営業日。",
+                      "- **この表は群7×期間4=28のセルがある。偶然でも t>2 のセルが1〜2個は出る。判定に使うのは、事前に決めた主セル(docs/VALUE_VALIDATION.md §5 の H1〜H5)だけ。それ以外は探索であり、採用の根拠にしない。**", "",
+                      "| 群 | 期間(営業日) | 観測数 | 基準日数 | 該当群の平均超過 | ベースライン平均 | 差(日付ごと) | t値 | 差がプラスだった日の割合 | 判定 |",
+                      "|---|---|---|---|---|---|---|---|---|---|"]
+            for r in res.horizons.itertuples():
+                f = lambda x: "—" if x != x else f"{x:.1%}"
+                tt = "—" if r.t != r.t else f"{r.t:.2f}"
+                lines.append(f"| {r.group} | {r.horizon} | {r.n} | {r.n_dates} | {f(r.mean_excess)} | {f(r.baseline_mean)} | "
+                             f"{f(r.lift)} | {tt} | {f(r.pos_share)} | {r.verdict} |")
         lines += ["", "## 読み方", "",
-                  "- p値は「ベースラインから同じ数をランダムに選んだとき、これ以上の割合になる確率」(片側)。",
+                  "- p値は「同じ日のベースラインから、その日の該当数だけランダムに選んだとき、これ以上の数が動く確率」(片側。日付ごとの層別)。",
                   "- 同じ日の銘柄は値動きが連動するので、観測は独立ではない。**基準日数が少ないうちは p値を信用しない。**",
+                  "- 検出力の目安(`scripts/value_power_analysis.py`、仮定つき):基準日24日(約2年の月次)では、20営業日で+2%程度以上の優位性しか確実には検出できない。それより小さい優位性は、「差なし」と出ても「無い」とは言えない。",
                   "- 「ベースラインより高い」と出ても、別の期間・別の相場で再確認するまで採用しない。",
                   "- 型が重なったほうが成績が良いか(「型が2つ以上」と「型が1つだけ」の比較)が、合議スコアの存在理由。"
                   "差が出なければ、この設計は見直す。"]

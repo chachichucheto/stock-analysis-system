@@ -76,7 +76,9 @@ class ValueThresholds:
     lot_size: int = 100
 
     # --- 過去検証 ---
-    horizon_days: int = 20               # 連想モデルと同じ(最長20営業日)
+    horizon_days: int = 20               # 「動いた」を見る主な期間。連想モデルと同じ(最長20営業日)
+    horizons: tuple[int, ...] = (20, 60, 120, 250)   # 型の性格に合わせて見る期間。A・Bは数か月〜1年かけて再評価される想定
+    min_dates: int = 24                  # 期間別の比較で、結論を出すのに必要な基準日の数(約2年の月次)
     moved_excess: float = 0.10           # TOPIX 超過 +10% で「動いた」
     min_samples: int = 30                # これ未満は結論を出さない
     permutation_draws: int = 2000

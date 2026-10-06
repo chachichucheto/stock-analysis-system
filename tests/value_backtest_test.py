@@ -159,3 +159,100 @@ def test_report_markdown_contains_warnings_and_table():
     res = bt.run_backtest(uni, fin, px, TOPIX, TEST_DATES, TH)
     md = bt.render_markdown(res, TH, START, END)
     assert "⚠ 銘柄マスタに上場廃止" in md and "| A |" in md and "別の期間" in md
+
+
+# ---- 検定の作りと、期間別の比較 ----
+
+def _obs(rows):
+    return pd.DataFrame(rows)
+
+
+def test_stratified_permutation_ignores_regime_clustering_but_naive_does_not():
+    """該当が「全銘柄が動きやすい日」に集中しているだけで、同じ日の中では優位性がない世界。
+    日付をまたいで混ぜる検定は有意と誤判定し、日付ごとに層別した検定は有意としない。"""
+    rows = []
+    for d in range(10):
+        hot = d < 2                                    # 2日だけ全銘柄が動きやすい日(地合いが良い)
+        m, k = 50, (40 if hot else 5)                  # その日のベースライン:50銘柄中、動いた銘柄数
+        n_sel = 20 if hot else 1                       # 該当は、動きやすい日に集中
+        sel_moved = round(n_sel * k / m)               # 同じ日の中では、該当の動いた割合 = ベースラインの割合
+        for i in range(m):
+            moved = i < k
+            selected = (moved and i < sel_moved) or (not moved and (i - k) < n_sel - sel_moved)
+            rows.append({"asof": d, "moved": moved, "sel": selected})
+    obs = _obs(rows)
+    assert int(obs["sel"].sum()) == 2 * 20 + 8 * 1
+    p_strat = bt.perm_p_value(obs, obs["sel"], 2000, 1, stratified=True)
+    p_naive = bt.perm_p_value(obs, obs["sel"], 2000, 1, stratified=False)
+    assert p_naive < 0.01                              # 誤って「有意」
+    assert p_strat > 0.2                               # 層別すれば有意にならない
+
+
+def test_stratified_permutation_still_detects_real_within_date_edge():
+    rows = []
+    for d in range(30):
+        for i in range(50):
+            rows.append({"asof": d, "sel": i < 4, "moved": i < 4 or 10 <= i < 15})   # 該当4銘柄は必ず動く。他は10%
+    obs = _obs(rows)
+    assert obs["sel"].sum() == 120 and obs.loc[obs["sel"], "moved"].all()
+    assert bt.perm_p_value(obs, obs["sel"], 2000, 1) < 0.01
+
+
+def test_date_paired_lift_basics():
+    rows = []
+    for d in range(30):
+        for i in range(20):
+            rows.append({"asof": d, "sel": i < 3, "x": (0.05 if i < 3 else 0.0) + (0.001 * ((d * 7 + i) % 5))})
+    obs = _obs(rows)
+    r = bt.date_paired_lift(obs, obs["sel"], "x")
+    assert r["n_dates"] == 30 and r["lift"] > 0.04 and r["t"] > 5 and r["pos_share"] == 1.0
+    flat = obs.assign(x=[0.001 * ((i * 13) % 7) for i in range(len(obs))])
+    assert abs(bt.date_paired_lift(flat, flat["sel"], "x")["t"]) < 3
+    assert bt.date_paired_lift(obs.iloc[:20], obs.iloc[:20]["sel"], "x")["n_dates"] == 1
+
+
+def test_horizon_table_verdicts():
+    th = ValueThresholds(horizons=(20, 120), min_dates=24)
+    rows = []
+    for d in range(30):
+        for i in range(20):
+            a = i < 3
+            rows.append({"asof": d, "hit_A": a, "hit_B": False, "hit_C": False, "hit_D": False, "n_types": int(a),
+                         "excess_final_20": 0.001 * ((d + i) % 3),                         # 20日では差なし
+                         "excess_final_120": (0.08 if a else 0.0) + 0.002 * ((d * 3 + i) % 4)})   # 120日では差あり
+    t = bt.horizon_table(_obs(rows), th).set_index(["group", "horizon"])
+    assert t.loc[("A", 120), "verdict"].startswith("ベースラインより高い")
+    assert t.loc[("A", 20), "verdict"].startswith("ベースラインと差があるとは言えない")
+    assert t.loc[("B", 120), "verdict"] == "該当なし"
+    few = bt.horizon_table(_obs(rows[: 20 * 10]), th).set_index(["group", "horizon"])
+    assert few.loc[("A", 120), "verdict"].startswith("基準日数不足")
+
+
+def test_long_horizons_are_unavailable_near_the_end_of_data():
+    uni, fin, px = world(n_a=2, n_plain=2)
+    res = bt.run_backtest(uni, fin, px, TOPIX, [TEST_DATES[0], TEST_DATES[-1]], ValueThresholds(permutation_draws=100))
+    first = res.obs[res.obs["asof"] == TEST_DATES[0]]
+    last = res.obs[res.obs["asof"] == TEST_DATES[-1]]
+    assert first["excess_final_250"].notna().all()                    # 十分に先まで株価がある
+    assert last["excess_final_20"].notna().all() and last["excess_final_60"].notna().all()
+    assert last["excess_final_250"].isna().all()                      # データの終わりを超える期間は未確定
+    assert not res.horizons.empty
+
+
+def test_missing_prices_without_delisting_make_the_horizon_unavailable_not_truncated():
+    cut = DAYS.index(TEST_DATES[5]) + 30                              # 基準日の30営業日後で株価が途切れる(上場廃止ではない)
+    short = frame(DAYS[:cut], [350.0] * cut)
+    uni = Universe([universe_row("G001")])                            # delisted なし
+    fins = store(fin_row("G001", period_end=date(2021, 3, 31), disclosed=date(2021, 5, 14)))
+    res = bt.run_backtest(uni, fins, FramePriceSource({"G001": short}), TOPIX, [TEST_DATES[5]],
+                          ValueThresholds(permutation_draws=100))
+    row = res.obs.iloc[0]
+    assert row["excess_final_20"] == row["excess_final_20"]           # 20日はデータがある
+    assert row["excess_final_60"] != row["excess_final_60"]           # 60日は欠け=未確定(NaN)。最後の終値で埋めない
+
+
+def test_report_has_horizon_table():
+    uni, fin, px = world()
+    res = bt.run_backtest(uni, fin, px, TOPIX, TEST_DATES, ValueThresholds(permutation_draws=100))
+    md = bt.render_markdown(res, ValueThresholds(), START, END)
+    assert "期間別(日付ごとの比較" in md and "検出力の目安" in md
