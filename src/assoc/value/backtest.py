@@ -154,7 +154,7 @@ def run_backtest(universe: Universe, fin: FinancialsStore, prices: PriceSource, 
             if fwd is None:
                 no_forward += 1
                 continue
-            counted = count_types(screens)
+            counted = count_types(screens, th.use_type_d)
             prim = fwd[th.horizon_days]
             extra = {f"excess_final_{h}": (fwd[h]["excess_final"] if fwd[h] else float("nan")) for h in th.horizons}
             fa = screens["A"].facts

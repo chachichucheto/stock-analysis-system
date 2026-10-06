@@ -1,6 +1,6 @@
 """合議スコア(docs/VALUE_DESIGN.md §6.4)。複数の型が重なった銘柄を優先する。
 
-  スコア = 型の一致数(A・B・C。D は A〜C のどれかと重なったときだけ+1)
+  スコア = 型の一致数(A・B・C。D は use_type_d=True のとき、A〜C のどれかと重なったときだけ+1。既定は数えない)
          + カタリスト点(Strong 2 / Medium 1 / Weak 0.5)
          − 警告 × 減点
   候補にする条件 = 除外(block)が無く、(型が2つ以上) または (型が1つ以上 かつ カタリスト点が1以上)
@@ -41,16 +41,17 @@ class Candidate:
     blocked: bool = False
 
 
-def count_types(screens: dict[str, ScreenResult]) -> list[str]:
+def count_types(screens: dict[str, ScreenResult], use_d: bool = True) -> list[str]:
+    """数える型。D は A〜C と重なったときだけ補助で数える。use_d=False なら D は数えない(既定の設定)。"""
     main = [k for k in ("A", "B", "C") if screens[k].hit]
-    if main and screens["D"].hit:
+    if use_d and main and screens["D"].hit:
         return main + ["D"]
     return main
 
 
 def evaluate_candidate(s: Snapshot, screens: dict[str, ScreenResult], dangers: list[Danger],
                        catalyst: Catalyst | None, th: ValueThresholds) -> Candidate:
-    types = count_types(screens)
+    types = count_types(screens, th.use_type_d)
     points = th.catalyst_points.get(catalyst.strength, 0.0) if catalyst else 0.0
     warns = sum(1 for d in dangers if d.severity == "warn")
     blocked = any(d.severity == "block" for d in dangers)

@@ -60,6 +60,7 @@ class ValueThresholds:
     surged_ret20: float = 0.50           # 直近20営業日で +50% 超 → 警告(急騰済み)
 
     # --- 合議スコア ---
+    use_type_d: bool = False             # 型Dを「型の数」に数えるか。実データの検証(2016〜2025)で不合格(有意にマイナス)のため既定は外す
     catalyst_points: dict[str, float] = field(default_factory=lambda: {"Strong": 2.0, "Medium": 1.0, "Weak": 0.5, "None": 0.0})
     warn_penalty: float = 1.0
     llm_max_items: int = 20              # LLM に渡す候補の上限(量より質)

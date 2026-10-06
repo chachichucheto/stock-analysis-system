@@ -28,6 +28,14 @@ def test_d_counts_only_when_overlapping_with_a_to_c():
     assert count_types(screens(A=True, D=True)) == ["A", "D"]
 
 
+def test_type_d_is_not_counted_by_default_but_can_be_enabled():
+    from dataclasses import replace
+    assert TH.use_type_d is False                                    # 実データで不合格(docs/VALUE_VALIDATION.md §7.1)
+    assert [k for k in cand(A=True, D=True).types_hit] == ["A"]
+    on = evaluate_candidate(snap(), screens(A=True, D=True), [], None, replace(TH, use_type_d=True))
+    assert on.types_hit == ["A", "D"] and on.qualifies
+
+
 def test_qualifies_by_two_types_or_one_type_plus_catalyst():
     assert cand(A=True, B=True).qualifies
     assert not cand(A=True).qualifies

@@ -5,7 +5,7 @@
 ファンダメンタルズ分析・需給分析に続く、3つ目のモデル。
 
 > **4つ目のモデル(割安カタリスト)** も同じリポジトリにある。資産に対して割安な小型株で、再評価のきっかけ(カタリスト)がありそうなものを探す。
-> 有名個人投資家の手法の調査をもとにした設計で、**実データでの検証はまだ。現時点では「勝てる」と言えない**(→ [docs/VALUE_VALIDATION.md](docs/VALUE_VALIDATION.md)、設計は [docs/VALUE_DESIGN.md](docs/VALUE_DESIGN.md)、ローカルへの指示は [docs/VALUE_LOCAL_KICKOFF.md](docs/VALUE_LOCAL_KICKOFF.md))。
+> 有名個人投資家の手法の調査をもとにした設計で、**実データの検証が始まった(型Dは不合格、型Aは方向が正だが未確定)。現時点では「勝てる」とは言えない**(→ [docs/VALUE_VALIDATION.md](docs/VALUE_VALIDATION.md)、設計は [docs/VALUE_DESIGN.md](docs/VALUE_DESIGN.md)、ローカルへの指示は [docs/VALUE_LOCAL_KICKOFF.md](docs/VALUE_LOCAL_KICKOFF.md))。
 
 | 文書 | 内容 |
 |---|---|
