@@ -176,6 +176,13 @@ def cmd_value(args) -> int:
     app = _app(args)
     env = vrun.load_env(app)
     day = _date(args.date) or app.today()
+    if args.action == "check":
+        from assoc.value.check import check_data
+        res = check_data(env.universe, env.fin, env.prices, day)
+        for label, rows in (("情報", res.info), ("警告", res.warnings), ("エラー", res.errors)):
+            for m in rows:
+                print(f"  [{label}] {m}")
+        return 1 if res.errors else 0
     if args.action == "screen":
         print(f"入力パック: {vrun.build_pack(env, day)}")
     elif args.action == "commit":
@@ -265,8 +272,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--open", action="store_true", help="作ったあとブラウザで開く")
     s.set_defaults(func=cmd_dashboard)
 
-    s = sub.add_parser("value", help="割安カタリスト・モデル(screen / commit / report / backtest / eval)")
-    s.add_argument("action", choices=["screen", "commit", "report", "backtest", "eval"])
+    s = sub.add_parser("value", help="割安カタリスト・モデル(check / screen / commit / report / backtest / eval)")
+    s.add_argument("action", choices=["check", "screen", "commit", "report", "backtest", "eval"])
     s.add_argument("--date", help="対象日 YYYY-MM-DD(省略時は今日)")
     s.add_argument("--file", help="commit: 開示読解の出力 / eval: 評価する出力(JSON)")
     s.add_argument("--start", help="backtest: 開始日")

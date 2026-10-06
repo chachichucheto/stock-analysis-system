@@ -4,6 +4,9 @@
 テスタ氏が得意とする「ニュースからの連想ゲーム」を、個人でも毎日回せる形にしたもの。
 ファンダメンタルズ分析・需給分析に続く、3つ目のモデル。
 
+> **4つ目のモデル(割安カタリスト)** も同じリポジトリにある。資産に対して割安な小型株で、再評価のきっかけ(カタリスト)がありそうなものを探す。
+> 有名個人投資家の手法の調査をもとにした設計で、**実データでの検証はまだ**(→ [docs/VALUE_DESIGN.md](docs/VALUE_DESIGN.md)、ローカルへの指示は [docs/VALUE_LOCAL_KICKOFF.md](docs/VALUE_LOCAL_KICKOFF.md))。
+
 | 文書 | 内容 |
 |---|---|
 | [docs/CONCEPT.md](docs/CONCEPT.md) | 何を・なぜ作るか(最上位) |
@@ -13,6 +16,10 @@
 | [docs/DECISIONS.md](docs/DECISIONS.md) | 決定の記録 |
 | [docs/THEMES.md](docs/THEMES.md) | テーマの一覧 |
 | [docs/ANALYSIS_PLAN.md](docs/ANALYSIS_PLAN.md) | 答え合わせの定義と基準 |
+| [docs/INVESTOR_RESEARCH.md](docs/INVESTOR_RESEARCH.md) | 有名個人投資家の手法の調査(割安カタリストの元) |
+| [docs/VALUE_DESIGN.md](docs/VALUE_DESIGN.md) | 割安カタリスト・モデルの設計 |
+| [docs/VALUE_LOCAL_KICKOFF.md](docs/VALUE_LOCAL_KICKOFF.md) | 同・ローカルの Claude Code への作業指示書 |
+| [docs/VALUE_CATALYST_PLAN.md](docs/VALUE_CATALYST_PLAN.md) | 同・最初のたたき台(経緯) |
 
 ## 毎日の使い方(概要)
 

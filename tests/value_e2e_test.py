@@ -125,3 +125,13 @@ def test_eval_cli_runs_on_shipped_samples(tmp_path, capsys):
 def test_backtest_cli_requires_range(env, capsys):
     assert run(env, "backtest") == 1
     assert "--start" in capsys.readouterr().out
+
+
+def test_check_cli_reports_and_exit_code(env, capsys):
+    assert run(env, "check") == 0                                  # 廃止銘柄あり・開示日も正常 → エラーなし
+    out = capsys.readouterr().out
+    assert "銘柄マスタ 3銘柄" in out and "[警告]" in out          # 3000 は財務データなし、他にも警告が出る
+    (env["value"] / "financials.csv").write_text(
+        FIN_HEADER + "1000,2026-03-31,2026-03-01,FY,1,1,0,0,0,1,1,1,1,0,1,1,1,1000\n", encoding="utf-8")
+    assert run(env, "check") == 1
+    assert "先読み" in capsys.readouterr().out

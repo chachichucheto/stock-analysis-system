@@ -2,7 +2,8 @@
 #   powershell -ExecutionPolicy Bypass -File scripts\windows\register_tasks.ps1
 # 登録の解除:  powershell -ExecutionPolicy Bypass -File scripts\windows\register_tasks.ps1 -Remove
 # 収集だけ先に始める: powershell -ExecutionPolicy Bypass -File scripts\windows\register_tasks.ps1 -CollectOnly
-param([switch] $Remove, [switch] $CollectOnly)
+# 割安カタリスト・モデルの毎日のスクリーンも登録する(データの用意と過去検証のあと。docs/VALUE_LOCAL_KICKOFF.md): -WithValue
+param([switch] $Remove, [switch] $CollectOnly, [switch] $WithValue)
 $ErrorActionPreference = "Stop"
 $root = Resolve-Path "$PSScriptRoot\..\.."
 $runner = Join-Path $root "scripts\windows\run.ps1"
@@ -18,6 +19,9 @@ $tasks = @(
 )
 
 if ($CollectOnly) { $tasks = $tasks | Where-Object { $_.Name -in @("assoc_collect", "assoc_daily", "assoc_backup") } }
+
+# 割安カタリスト・モデルは、データが無いと毎日エラーになるので、-WithValue を付けたとき(と解除のとき)だけ扱う
+if ($WithValue -or $Remove) { $tasks += @{ Name = "assoc_value_screen"; Args = "value screen"; Trigger = (New-ScheduledTaskTrigger -Daily -At "18:30") } }
 
 foreach ($t in $tasks) {
     if (Get-ScheduledTask -TaskName $t.Name -ErrorAction SilentlyContinue) {
