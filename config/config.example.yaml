@@ -78,7 +78,7 @@ collect:
     - 訪日外国人旅行
     - 南海トラフ巨大地震
   # JPX の上場銘柄一覧(Excel)。URL が変わることがあるので、取れないときは JPX のサイトで確認する
-  jpx_universe_url: https://www.jpx.co.jp/markets/statistics-equities/misc/tvdivq0000001vg2-att/data_j.xls
+  jpx_universe_url: https://www.jpx.co.jp/markets/statistics-equities/misc/tvdivq0000001vg2-att/data_j.xlsx   # 2026-10 に確認。拡張子が .xls から .xlsx に変わっていた
   earnings_schedule_url: ""      # 決算発表予定日の一覧(配布 URL は S1 で確認する)
   request_interval_sec: 1.0      # 取得の間隔(相手先に負荷をかけない)
   user_agent: "assoc-research/0.1 (personal use)"

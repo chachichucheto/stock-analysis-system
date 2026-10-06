@@ -256,3 +256,52 @@ def test_report_has_horizon_table():
     res = bt.run_backtest(uni, fin, px, TOPIX, TEST_DATES, ValueThresholds(permutation_draws=100))
     md = bt.render_markdown(res, ValueThresholds(), START, END)
     assert "期間別(日付ごとの比較" in md and "検出力の目安" in md
+
+
+# ---- 株価だけの過去検証(財務データなし) ----
+
+def dip_prices(base: float, asof_dates: list[date]) -> list[float]:
+    """各基準日にだけ -30% へ急落し、その後15営業日で元の水準へ戻る(前回の急落が25日線に残っても、乖離が閾値を超える深さ)(「売られすぎ→反発」を仕込んだ世界)。"""
+    idx = {d: i for i, d in enumerate(DAYS)}
+    p = [base] * len(DAYS)
+    for a in asof_dates:
+        i = idx[a]
+        p[i] = base * 0.70
+        for j in range(1, 16):
+            p[i + j] = base * (0.70 + 0.30 * j / 15)
+    return p
+
+
+def price_world(n_dip=6, n_plain=24):
+    frames, rows = {}, []
+    for i in range(n_dip):
+        frames[f"R{i:03d}"] = frame(DAYS, dip_prices(350.0, TEST_DATES))
+        rows.append(universe_row(f"R{i:03d}", sector="機械"))
+    for i in range(n_plain):
+        frames[f"P{i:03d}"] = frame(DAYS, flat_prices(350.0))
+        rows.append(universe_row(f"P{i:03d}", sector="機械"))
+    rows.append(universe_row("X999", delisted=date(2022, 1, 5)))
+    return Universe(rows), FramePriceSource(frames)
+
+
+def test_price_backtest_detects_planted_oversold_rebound():
+    uni, px = price_world()
+    res = bt.run_price_backtest(uni, px, TOPIX, TEST_DATES, TH)
+    assert res.warnings == []
+    d = res.obs[res.obs["hit_D"]]
+    assert set(d["code"]) == {f"R{i:03d}" for i in range(6)} and d["moved"].all()
+    s = res.summary.set_index("group")
+    assert s.loc["D", "verdict"].startswith("ベースラインより高い")
+    assert s.loc["A", "verdict"] == "該当なし"                                  # 財務が要る型は該当しない
+    h = res.horizons.set_index(["group", "horizon"])
+    assert h.loc[("D", 20), "lift"] > 0.05 and h.loc[("D", 20), "t"] > 2
+
+
+def test_price_backtest_filters_and_survivorship_warning():
+    uni, px = price_world(n_dip=2, n_plain=2)
+    uni = Universe([r for r in uni.rows if r.code != "X999"])
+    res = bt.run_price_backtest(uni, px, TOPIX, TEST_DATES[:6], TH, size_ok=lambda c: c != "R000")
+    assert "R000" not in set(res.obs["code"])                                   # 規模の絞り込み
+    assert any("生存者バイアス" in w and "型D" in w for w in res.warnings)
+    with pytest.raises(ValueError):
+        bt.run_price_backtest(uni, px, TOPIX, TEST_DATES[:6], TH, require_delisted=True)

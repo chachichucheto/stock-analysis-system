@@ -21,6 +21,7 @@ import pandas as pd
 
 from assoc.market.prices import PriceSource
 from assoc.timeutil import add_business_days, is_business_day
+from assoc.value import metrics
 from assoc.value.dangers import detect_dangers
 from assoc.value.data import FinancialsStore, Universe
 from assoc.value.score import count_types
@@ -63,8 +64,13 @@ def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
     return (center - half, center + half)
 
 
+def horizon_ends(asof: date, hs: tuple[int, ...]) -> dict[int, date]:
+    """基準日から h 営業日後の日付(営業日の計算は遅いので、基準日ごとに1回だけ計算して使い回す)。"""
+    return {h: add_business_days(asof, h) for h in hs}
+
+
 def _forward(stock: pd.DataFrame, topix_ser: pd.Series, asof: date, entry: float, hs: tuple[int, ...],
-             primary: int, delisted: date | None) -> dict | None:
+             primary: int, delisted: date | None, ends: dict[int, date] | None = None) -> dict | None:
     """基準日の終値から、各期間 h(営業日)までの TOPIX 超過を計算する。
 
     - 期間の終わりが TOPIX の最終日を超える → その期間は未確定(NaN)。直近の基準日で、長い期間が空くのは正常
@@ -73,7 +79,8 @@ def _forward(stock: pd.DataFrame, topix_ser: pd.Series, asof: date, entry: float
     """
     t0 = float(topix_ser.loc[:asof].iloc[-1])
     topix_last = topix_ser.index[-1]
-    fwd_all = stock[(stock["date"] > asof) & (stock["date"] <= add_business_days(asof, max(hs)))]
+    ends = ends or horizon_ends(asof, hs)
+    fwd_all = stock[(stock["date"] > asof) & (stock["date"] <= ends[max(hs)])]
     if fwd_all.empty:
         return None
     t = topix_ser.reindex(fwd_all["date"].tolist(), method="ffill").to_numpy(dtype=float)
@@ -81,7 +88,7 @@ def _forward(stock: pd.DataFrame, topix_ser: pd.Series, asof: date, entry: float
     dates = fwd_all["date"].tolist()
     out: dict = {}
     for h in hs:
-        end_h = add_business_days(asof, h)
+        end_h = ends[h]
         if end_h > topix_last:
             out[h] = None
             continue
@@ -125,6 +132,7 @@ def run_backtest(universe: Universe, fin: FinancialsStore, prices: PriceSource, 
         if asof not in topix_ser.index:
             skipped_dates.append(asof)
             continue
+        ends = horizon_ends(asof, th.horizons)
         for u in universe.members(asof):
             df = load(u.code)
             if df.empty:
@@ -142,7 +150,7 @@ def run_backtest(universe: Universe, fin: FinancialsStore, prices: PriceSource, 
             if any(d.severity == "block" for d in dangers):
                 continue
             screens = run_screens(snap, th)
-            fwd = _forward(df, topix_ser, asof, snap.price, th.horizons, th.horizon_days, u.delisted_date)
+            fwd = _forward(df, topix_ser, asof, snap.price, th.horizons, th.horizon_days, u.delisted_date, ends)
             if fwd is None:
                 no_forward += 1
                 continue
@@ -166,6 +174,72 @@ def run_backtest(universe: Universe, fin: FinancialsStore, prices: PriceSource, 
     if trunc:
         warnings.append(f"株価が途中で途切れた観測 {trunc}件は、最後の終値で評価しています"
                         "(上場廃止の実際の清算値より楽観的な可能性)")
+    return BacktestResult(obs, summarize(obs, th), warnings, horizon_table(obs, th))
+
+
+def run_price_backtest(universe: Universe, prices: PriceSource, topix: pd.DataFrame, dates: list[date],
+                       th: ValueThresholds, size_ok=None, require_delisted: bool = False) -> BacktestResult:
+    """**株価だけ**の過去検証(財務データが無くてもできる)。型D(25日線からの下方乖離)と、その元データを残す。
+
+    足切りは、株価100円以上と、売買代金(20日平均)の下限だけ。時価総額は使えないので、規模は size_ok(コード→bool)で絞る。
+    型A・B・C は財務が要るので、ここでは該当しない扱い。乖離率などの元の値を obs に残すので、閾値を変えた感度の確認もできる。
+    銘柄ごとに株価を1度だけ読んで全基準日を処理する(メモリと時間の節約)。
+    """
+    warnings: list[str] = []
+    if not universe.has_delisted():
+        msg = ("銘柄マスタに上場廃止の銘柄がありません。生存者バイアスで成績が水増しされている恐れがあります。"
+               "売られた銘柄ほど上場廃止になりやすいので、型Dは特に楽観側に偏ります")
+        if require_delisted:
+            raise ValueError(msg)
+        warnings.append(msg)
+    topix_ser = pd.Series(topix["close"].astype(float).values, index=topix["date"].values).sort_index()
+    valid_dates = [d for d in dates if d in topix_ser.index]
+    if len(valid_dates) < len(dates):
+        warnings.append(f"TOPIX の株価が無く、検証から外した基準日: {len(dates) - len(valid_dates)}日")
+    ends = {d: horizon_ends(d, th.horizons) for d in valid_dates}
+    lo, hi = min(dates) - timedelta(days=120), max(dates) + timedelta(days=420)
+    rows, no_forward = [], 0
+    for u in universe.rows:
+        if size_ok is not None and not size_ok(u.code):
+            continue
+        df = prices.daily(u.code, lo, hi)
+        if df.empty:
+            continue
+        d_arr = df["date"].to_numpy()
+        for asof in valid_dates:
+            if u.listed_date is not None and u.listed_date > asof:
+                continue
+            if u.delisted_date is not None and u.delisted_date <= asof:
+                continue
+            n = int(np.searchsorted(d_arr, asof, side="right"))
+            if n < max(th.ma_window, th.turnover_window) or d_arr[n - 1] != asof:
+                continue
+            sliced = df.iloc[:n]
+            price = float(sliced.iloc[-1]["close"])
+            turnover = metrics.avg_turnover(sliced, th.turnover_window)
+            if price < th.min_price_yen or turnover is None or turnover < th.min_turnover_yen:
+                continue
+            dev = metrics.ma_deviation(sliced, th.ma_window)
+            if dev is None:
+                continue
+            fwd = _forward(df, topix_ser, asof, price, th.horizons, th.horizon_days, u.delisted_date, ends[asof])
+            if fwd is None:
+                no_forward += 1
+                continue
+            prim = fwd[th.horizon_days]
+            row = {f"excess_final_{h}": (fwd[h]["excess_final"] if fwd[h] else float("nan")) for h in th.horizons}
+            row.update({"asof": asof, "code": u.code, "sector33": u.sector33, "turnover": turnover, "deviation": dev,
+                        "hit_A": False, "hit_B": False, "hit_C": False, "hit_D": dev <= th.sector_deviation(u.sector33),
+                        "n_types": 0, "types": "", "moved": prim["excess_max"] >= th.moved_excess,
+                        "excess_max": prim["excess_max"], "excess_final": prim["excess_final"],
+                        "truncated": prim["truncated"]})
+            rows.append(row)
+    obs = pd.DataFrame(rows)
+    if no_forward:
+        warnings.append(f"基準日の翌日以降の株価が無く外した観測: {no_forward}件")
+    if obs.empty:
+        warnings.append("観測が1件もありません")
+        return BacktestResult(obs, pd.DataFrame(), warnings)
     return BacktestResult(obs, summarize(obs, th), warnings, horizon_table(obs, th))
 
 
