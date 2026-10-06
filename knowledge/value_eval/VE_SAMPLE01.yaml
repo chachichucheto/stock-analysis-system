@@ -1,0 +1,17 @@
+id: VE_SAMPLE01
+fictional: true
+company: 架空工業(形式の見本)
+code: "0000"
+input:
+  disclosures:
+    - id: d1
+      title: 自己株式の取得に関するお知らせ
+      body_excerpt: |
+        取得し得る株式の総数 600,000株(発行済株式総数(自己株式を除く)に対する割合 6.0%)
+        株式の取得価額の総額 800,000,000円(上限)
+        取得期間 2025年5月16日から2025年8月15日まで
+expected:
+  catalyst_types: [株主還元]
+  strength: Medium
+  timing: 1〜3か月
+  note: 形式の見本。実際の株価の動きとは無関係。

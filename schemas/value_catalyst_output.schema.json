@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "割安カタリスト・モデル:開示読解の出力(prompts/value-disclosure-v1.md)",
+  "type": "object",
+  "required": ["asof", "items"],
+  "additionalProperties": false,
+  "properties": {
+    "asof": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["key", "catalyst_types", "strength", "timing", "summary", "bull_case", "bear_case", "facts", "confirm_next"],
+        "additionalProperties": false,
+        "properties": {
+          "key": {"type": "string", "minLength": 1, "description": "入力パックの銘柄コード(評価セットでは case_id)"},
+          "catalyst_types": {
+            "type": "array", "uniqueItems": true,
+            "items": {"enum": ["株主還元", "資産・資本", "株主の動き", "業績", "市場区分・指数", "事業"]}
+          },
+          "strength": {"enum": ["None", "Weak", "Medium", "Strong"]},
+          "timing": {"enum": ["1か月以内", "1〜3か月", "3〜6か月", "不明"]},
+          "summary": {"type": "string"},
+          "bull_case": {"type": "string"},
+          "bear_case": {"type": "string"},
+          "facts": {
+            "type": "array",
+            "items": {
+              "type": "object", "required": ["text", "source_id", "quote"], "additionalProperties": false,
+              "properties": {
+                "text": {"type": "string", "minLength": 1},
+                "source_id": {"type": "string", "minLength": 1},
+                "quote": {"type": "string", "minLength": 1}
+              }
+            }
+          },
+          "confirm_next": {"type": "string"}
+        }
+      }
+    }
+  }
+}

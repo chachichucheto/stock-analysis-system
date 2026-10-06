@@ -1,0 +1,15 @@
+id: VE_SAMPLE04
+fictional: true
+company: 架空化学(形式の見本)
+code: "0000"
+input:
+  disclosures:
+    - id: d1
+      title: 第三者割当による新株式の発行に関するお知らせ
+      body_excerpt: |
+        発行新株式数 3,000,000株(発行前の発行済株式総数に対する割合 30.0%)
+        調達資金の使途 運転資金および借入金の返済
+expected:
+  catalyst_types: []
+  strength: None
+  note: 形式の見本。大きな希薄化。カタリストではなく危険信号(dangers.py が別に拾う)。

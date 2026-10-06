@@ -1,0 +1,15 @@
+id: VE_SAMPLE02
+fictional: true
+company: 架空商事(形式の見本)
+code: "0000"
+input:
+  disclosures:
+    - id: d1
+      title: 定款の一部変更および役員人事に関するお知らせ
+      body_excerpt: |
+        2025年6月開催の定時株主総会に、定款の一部変更(本店所在地の表記の変更)および
+        取締役1名の選任を付議することを決議いたしました。
+expected:
+  catalyst_types: []
+  strength: None
+  note: 形式の見本。形式的な開示で、カタリストなし。

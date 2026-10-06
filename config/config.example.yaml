@@ -82,3 +82,9 @@ collect:
   earnings_schedule_url: ""      # 決算発表予定日の一覧(配布 URL は S1 で確認する)
   request_interval_sec: 1.0      # 取得の間隔(相手先に負荷をかけない)
   user_agent: "assoc-research/0.1 (personal use)"
+
+# 割安カタリスト・モデル(docs/VALUE_DESIGN.md)
+value:
+  dir: ""                        # 銘柄マスタ・財務データ(universe.csv / financials.csv)の置き場所。空なら data/value
+  capital_yen: 0                 # 総資金(円)。設定するとレポートに株数の上限を出す。0なら出さない
+  thresholds: {}                 # 閾値の上書き。例: { min_turnover_yen: 50000000, mcap_max_yen: 30000000000 }

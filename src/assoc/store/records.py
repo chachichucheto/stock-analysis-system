@@ -20,6 +20,7 @@ KINDS = frozenset({
     "evidence", "candidate", "ranking_snapshot", "pick_tracking", "user_decision",
     "run_log", "event_gate", "commit_rejection", "theme_temperature", "monthly_review",
     "scenario_status", "grade_final", "past_case",
+    "value_candidate", "value_catalyst",      # 割安カタリスト・モデル(docs/VALUE_DESIGN.md §7)
 })
 
 

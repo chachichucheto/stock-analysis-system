@@ -159,6 +159,44 @@ def cmd_decide(args) -> int:
     return 0
 
 
+def cmd_value(args) -> int:
+    """割安カタリスト・モデル(docs/VALUE_DESIGN.md)。"""
+    from assoc.value import run as vrun
+    if args.action == "eval":
+        if not args.file:
+            print("--file で開示読解の出力(JSON)を指定してください")
+            return 1
+        results, summary, errors = vrun.run_eval(Path(args.file))
+        if errors:
+            print("出力の形式に問題があります:\n" + "\n".join(f"  - {e}" for e in errors))
+            return 1
+        for k, v in summary.items():
+            print(f"  {k}: {v}")
+        return 0
+    app = _app(args)
+    env = vrun.load_env(app)
+    day = _date(args.date) or app.today()
+    if args.action == "screen":
+        print(f"入力パック: {vrun.build_pack(env, day)}")
+    elif args.action == "commit":
+        errors, n = vrun.commit(env, Path(args.file) if args.file else None)
+        if errors:
+            print("確定できませんでした。次を直して、もう一度 python -m assoc value commit を実行してください:")
+            for e in errors:
+                print(f"  - {e}")
+            return 1
+        print(f"確定しました: {n}銘柄")
+    elif args.action == "report":
+        md, csv_path = vrun.report(env, day)
+        print(f"レポート: {md}\n連携ファイル: {csv_path}")
+    else:
+        if not (args.start and args.end):
+            print("--start と --end(YYYY-MM-DD)を指定してください")
+            return 1
+        print(f"過去検証: {vrun.backtest(env, _date(args.start), _date(args.end), args.require_delisted)}")
+    return 0
+
+
 def cmd_verify(args) -> int:
     problems = _app(args).verify()
     print("\n".join(problems) or "記録は正常です(書き換えは見つかりません)")
@@ -226,6 +264,15 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("dashboard", help="ダッシュボード(data/reports/dashboard.html)を作る")
     s.add_argument("--open", action="store_true", help="作ったあとブラウザで開く")
     s.set_defaults(func=cmd_dashboard)
+
+    s = sub.add_parser("value", help="割安カタリスト・モデル(screen / commit / report / backtest / eval)")
+    s.add_argument("action", choices=["screen", "commit", "report", "backtest", "eval"])
+    s.add_argument("--date", help="対象日 YYYY-MM-DD(省略時は今日)")
+    s.add_argument("--file", help="commit: 開示読解の出力 / eval: 評価する出力(JSON)")
+    s.add_argument("--start", help="backtest: 開始日")
+    s.add_argument("--end", help="backtest: 終了日")
+    s.add_argument("--require-delisted", action="store_true", help="backtest: 上場廃止銘柄が無ければエラーにする")
+    s.set_defaults(func=cmd_value)
 
     sub.add_parser("verify", help="記録が書き換えられていないか確認する").set_defaults(func=cmd_verify)
     sub.add_parser("backup", help="記録を複製する").set_defaults(func=cmd_backup)
