@@ -12,7 +12,7 @@ from assoc.ingest.common import FetchResult, safe_run
 from assoc.master import calendar as master_calendar
 from assoc.master import universe as master_universe
 
-ALL_SOURCES = ("rss", "google_news", "tdnet", "edinet", "gdelt", "wikipedia", "universe", "calendar")
+ALL_SOURCES = ("rss", "google_news", "tdnet", "edinet", "gdelt", "wikipedia", "universe", "calendar", "margin")
 
 
 def collect(
@@ -56,6 +56,9 @@ def collect(
         results["calendar"] = safe_run(
             con, "earnings_schedule", lambda: master_calendar.fetch_earnings_schedule(cfg, con)
         )
+    if "margin" in targets:
+        from assoc.market import margin
+        results["margin"] = safe_run(con, "jpx_margin", lambda: margin.fetch_margin(cfg, con))
     return results
 
 
@@ -78,6 +81,6 @@ def consecutive_failures(con, source: str, n: int = 3) -> bool:
 def sources_with_consecutive_failures(con, sources: list[str] | None = None, n: int = 3) -> list[str]:
     """3回続けて失敗している収集器の一覧(レポート冒頭の警告に使う)。"""
     # fetch_log に記録される名前は、universe と calendar だけ収集器の名前と違う
-    logged = {"universe": "jpx_universe", "calendar": "earnings_schedule"}
+    logged = {"universe": "jpx_universe", "calendar": "earnings_schedule", "margin": "jpx_margin"}
     targets = sources if sources is not None else list(ALL_SOURCES)
     return [s for s in targets if consecutive_failures(con, logged.get(s, s), n)]

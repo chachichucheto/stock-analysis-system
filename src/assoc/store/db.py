@@ -41,6 +41,14 @@ CREATE TABLE IF NOT EXISTS calendar (
     code VARCHAR PRIMARY KEY, earnings_date DATE, earnings_estimated BOOLEAN,
     ex_rights_date DATE, credit_restriction VARCHAR, updated_at TIMESTAMPTZ
 );
+CREATE TABLE IF NOT EXISTS margin_daily (
+    date DATE, code VARCHAR, name VARCHAR, flags VARCHAR, market VARCHAR, loan_type VARCHAR,
+    sell_bal DOUBLE, sell_chg DOUBLE, sell_listed_pct DOUBLE,
+    buy_bal DOUBLE, buy_chg DOUBLE, buy_listed_pct DOUBLE,
+    sell_general DOUBLE, sell_system DOUBLE, buy_general DOUBLE, buy_system DOUBLE,
+    first_observed_at TIMESTAMPTZ NOT NULL,
+    PRIMARY KEY (date, code)
+);
 CREATE TABLE IF NOT EXISTS fetch_log (
     source VARCHAR, fetched_at TIMESTAMPTZ, ok BOOLEAN, items INTEGER, message VARCHAR
 );

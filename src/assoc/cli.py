@@ -143,6 +143,37 @@ def _refresh_dashboard(args) -> None:
         print(f"(ダッシュボードの更新に失敗: {e})")
 
 
+def cmd_margin(args) -> int:
+    """信用残(JPX 日々公表銘柄)を取り込み、需給指標を解析する。"""
+    from assoc.market import margin
+    app = _app(args)
+    if args.action == "import":
+        if not args.path:
+            print("--path で mtdaily.xlsx のファイル、またはそれらが入ったフォルダを指定してください")
+            return 1
+        p = Path(args.path)
+        files = sorted(p.glob("*_mtdaily.xlsx")) if p.is_dir() else [p]
+        for f in files:
+            df = margin.parse_daily_excel(f)
+            print(f"  ✓ {f.name}: {df['date'].iloc[0]} {margin.upsert_margin(app.con, df)} 銘柄")
+        if not files:
+            print(f"取り込めるファイルがありません: {p}")
+            return 1
+    if args.action in ("fetch", "run"):
+        from assoc.ingest.common import safe_run
+        r = safe_run(app.con, "jpx_margin", lambda: margin.fetch_margin(app.cfg, app.con))
+        print(f"  {'✓' if r.ok else '✗'} 信用残の取り込み: {r.items} 銘柄 {r.message}")
+        if not r.ok:
+            return 1
+    if args.action in ("analyze", "run"):
+        out = margin.write_report(app.con, app.dir("reports"), _date(args.date), args.top)
+        if out is None:
+            print("信用残のデータがありません。先に python -m assoc margin fetch を実行してください")
+            return 1
+        print(f"需給レポート: {out[0]}\n全銘柄の指標(CSV): {out[1]}")
+    return 0
+
+
 def cmd_decide(args) -> int:
     """本命に対するあなたの判断(買う/監視/見送り)を記録する(CONCEPT §9.1。任意)。"""
     app = _app(args)
@@ -216,6 +247,14 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("pastcase", help="過去事例ライブラリの値動きを計算する")
     s.add_argument("action", choices=["compute"])
     s.set_defaults(func=cmd_pastcase)
+
+    s = sub.add_parser("margin", help="信用残(JPX 日々公表銘柄)の取り込みと需給指標の解析")
+    s.add_argument("action", choices=["fetch", "analyze", "run", "import"],
+                   help="run は fetch のあと analyze。import は手元に溜めた mtdaily.xlsx の取り込み")
+    s.add_argument("--path", help="import: ファイル、または *_mtdaily.xlsx の入ったフォルダ")
+    s.add_argument("--date", help="解析する基準日 YYYY-MM-DD(省略時は最新)")
+    s.add_argument("--top", type=int, default=10, help="各ランキングの件数")
+    s.set_defaults(func=cmd_margin)
 
     s = sub.add_parser("decide", help="本命に対するあなたの判断を記録する(任意)")
     s.add_argument("code", help="銘柄コード")
