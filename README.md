@@ -20,6 +20,6 @@
 - 手動:夜に Claude Code で `/association-daily`(30分以内)
 - 見る:`data\reports\dashboard.html`(ダッシュボード)と `data\reports\report_YYYY-MM-DD.md`(連想レポート)
 - 月1回:`/association-monthly`(振り返り)
-- 信用残(JPX 日々公表銘柄):`python -m assoc margin run` で取り込みと需給指標の解析(`data\reports\margin_YYYY-MM-DD.md`・`.csv`)。`collect` にも含まれ、履歴は毎日DBに貯まる。手元の過去ファイルは `margin import --path <フォルダ>` で取り込める
+- 信用残(JPX の全銘柄、約4,200):`python -m assoc margin run` で取り込みと需給指標の解析(`data\reports\margin_YYYY-MM-DD.md`・`.csv`)。`collect` にも含まれ、履歴は毎日DBに貯まる。手元の過去ファイルは `margin import --path <フォルダ>` で取り込める
 
 最初の導入は [docs/HANDOFF.md](docs/HANDOFF.md) の §0 から。

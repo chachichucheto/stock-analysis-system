@@ -131,3 +131,52 @@ def test_write_report_creates_files_and_handles_empty(tmp_path):
     assert md.name == "margin_2026-10-07.md" and csv.exists()
     text = md.read_text(encoding="utf-8")
     assert "テストA" in text and "買残急増" in text and "ノイズ" not in text
+
+
+# ---- 全銘柄 PDF(mtall.pdf)。ページは横向きで、行が x、列が y に並ぶ ----------------------
+
+def _pdf_line(x, kind, isin, code, loan, name_cells, values, minus=()):
+    """株数行の単語(x0, y0, x1, y1, text)を、実物の PDF と同じ座標で作る。"""
+    ys = margin._PDF_VALUE_Y
+    words = [(x, 606, x + 5, 612, kind), (x, 616, x + 5, 650, isin), (x, 649, x + 5, 670, code),
+             (x, 682, x + 5, 690, loan)]
+    words += [(x, y, x + 5, y + 20, t) for y, t in name_cells]
+    for i, v in enumerate(values):
+        words.append((x, ys[i], x + 5, ys[i] + 20, v))
+        if i in minus:
+            words.append((x, ys[i] + 5, x + 5, ys[i] + 10, "▲"))     # ▲ は数字の左(y が大きい側)
+    return words
+
+
+VALUES = ["28,300", "2,800", "0.7%", "239,100", "7,300", "5.7%", "0", "0", "28,300", "2,800", "95,600", "3,900",
+          "143,500", "3,400"]
+
+
+def test_rows_from_words_reads_columns_and_negative_signs():
+    words = _pdf_line(117, "株数", "JP3159930001", "44400", "貸", [(697, "スタンダード"), (729, "ヴィッツ 普通株式")],
+                      VALUES, minus={1, 4, 9, 11, 13})
+    words += _pdf_line(123, "金額", "JP3159930001", "44400", "Loan", [], ["1"] * 14)     # 金額行は無視される
+    (r,) = margin.rows_from_words(words)
+    assert (r["code"], r["market"], r["loan_type"], r["name"]) == ("4440", "スタンダード", "貸", "ヴィッツ 普通株式")
+    assert (r["sell_bal"], r["sell_chg"], r["buy_bal"], r["buy_chg"]) == (28300, -2800, 239100, -7300)
+    assert (r["sell_listed_pct"], r["buy_listed_pct"]) == (0.7, 5.7)
+    assert (r["sell_general"], r["sell_system"], r["buy_general"], r["buy_system"]) == (0, 28300, 95600, 143500)
+
+
+def test_rows_from_words_etf_market_wins_over_name_text():
+    words = _pdf_line(117, "株数", "JP3048700003", "25160", "貸", [(710, "東証グロース２５０ＥＴＦ投信等")],
+                      ["0", "0", "*", "10", "0", "*"] + ["0"] * 8)
+    (r,) = margin.rows_from_words(words)
+    assert r["market"] == "投信等" and pd.isna(r["buy_listed_pct"])
+
+
+def test_rows_from_words_skips_lines_without_isin():
+    assert margin.rows_from_words(_pdf_line(117, "株数", "????", "44400", "貸", [], VALUES)) == []
+
+
+def test_merge_flags_adds_marks_only_for_same_day():
+    all_df = pd.DataFrame({"date": [date(2026, 10, 6)] * 2, "code": ["4440", "7203"], "flags": ["", ""]})
+    daily = pd.DataFrame({"date": [date(2026, 10, 6)], "code": ["4440"], "flags": ["規"]})
+    assert list(margin.merge_flags(all_df, daily)["flags"]) == ["規", ""]
+    other_day = daily.assign(date=date(2026, 10, 5))
+    assert list(margin.merge_flags(all_df, other_day)["flags"]) == ["", ""]

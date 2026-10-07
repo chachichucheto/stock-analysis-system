@@ -1,22 +1,26 @@
-"""信用残(JPX「日々公表銘柄等信用取引残高」)の取得・保存・需給指標の算出。
+"""信用残(JPX)の取得・保存・需給指標の算出。
 
-想定している形式
-----------------
-- 公表ページ: `https://www.jpx.co.jp/markets/statistics-equities/margin/index.html`
-  ここに最新営業日の `YYYYMMDD_mtdaily.xlsx` へのリンクがある。ファイルの置き場(`tvdivq...-att`)は
-  変わりうるので、固定 URL を置かず、ページの中のリンクから探す。
-- シートは1枚。1行目から注記が続き、`申込み現在` の行の左(B列)に基準日(例 `2026/10/6`)がある。
-- 銘柄の行は A列=単位株数の記号、B列=規制の印(規/日/監…)、C列=貸株の印(株/喚)、D列=銘柄名、E列=市場、
-  F列=制/貸/他、G列=コード(5桁。末尾0を除いた4桁が証券コード。新形式は `283A0`)、H列=ISIN、
-  I〜K列=売残高・前日比・上場比、L〜N列=買残高・前日比・上場比、O列=取組比率(売残/買残 %)、
-  P〜W列=売残(一般・制度)、買残(一般・制度)とそれぞれの前日比。単位は1株。
-- 載るのは**日々公表銘柄**(規制・貸株注意などの対象。約400銘柄)と ETF など。全銘柄ではない。
-  銘柄が対象から外れた日は、その銘柄の行が無い(残高ゼロではない)。
+取得するもの(いずれも毎営業日の16時ごろ掲載。直近分しか残らないので、毎日取って DB に貯める)
+--------------------------------------------------------------------------------------
+1. 銘柄別信用取引残高 `YYYYMMDD_mtall.pdf`(全銘柄・約4,200。ページ `margin/01.html`)。主データ。
+   PDF のみの配布。ページは横向き(90度回転)で、行が x 方向・列が y 方向に並ぶ。罫線は使わず、
+   単語の座標から読む(pdfplumber の表抽出は約220秒、座標方式は約4秒)。1銘柄は「株数」行と「金額」行の2行で、
+   必要な数字は株数行だけで足りる。
+2. 日々公表銘柄等信用取引残高 `YYYYMMDD_mtdaily.xlsx`(約400銘柄。ページ `margin/index.html`)。
+   規制の印(規/日/監/株/喚)がここにしか無いので、PDF の銘柄に同じ日・同じコードで付ける。
+   PDF が読めなかった日は、この xlsx だけを保存する(fetch_log の jpx_margin_all に失敗を残す)。
+
+列の意味(両方共通): 売残高・前日比・上場比、買残高・前日比・上場比、売残/買残それぞれの一般信用・制度信用。
+単位は1株(ETF 等は1口を1株)。上場比は ETF が `*`(欠損として保存)。5桁コードの末尾0を除いた4桁が証券コード
+(新形式は `283A0` → `283A`)。
+
+xlsx の配置: B列(`申込み現在` の行)に基準日、銘柄行は A=単位 B=規制 C=貸株 D=名前 E=市場 F=制/貸/他 G=コード H=ISIN、
+I〜K=売残・前日比・上場比、L〜N=買残・前日比・上場比、O=取組比率、P〜W=内訳。
 
 ローカルで最初に確認すべき点
 ----------------------------
-- 過去のファイルはリンクから消える(直近のみ)。履歴は毎日取り込んで DB に貯める必要がある。
-- 銘柄別の全銘柄の信用残は週1回の別資料(銘柄別信用取引週末残高)で、本モジュールの対象外。
+- JPX が形式を変えると PDF が読めなくなる(銘柄数 3,000 未満・基準日の不一致は失敗として扱い、xlsx に切り替える)。
+- 過去のファイルは取れない。手元に溜めた分は `margin import` で取り込む。
 
 解析部分(parse_*・build_metrics・render_report)は純関数。取得(fetch_margin)だけが外部に接続する。
 """
@@ -34,9 +38,12 @@ from assoc.ingest.common import RateLimiter, log_fetch
 from assoc.timeutil import jst_date, to_iso, utcnow
 
 INDEX_URL = "https://www.jpx.co.jp/markets/statistics-equities/margin/index.html"
+ALL_URL = "https://www.jpx.co.jp/markets/statistics-equities/margin/01.html"   # 銘柄別信用取引残高(全銘柄・PDF)
 
 _ISIN = re.compile(r"^[A-Z]{2}[0-9A-Z]{9}[0-9]$")
 _DAILY_LINK = re.compile(r'href="([^"]*?(\d{8})_mtdaily\.xlsx)"')
+_ALL_LINK = re.compile(r'href="([^"]*?(\d{8})_mtall\.pdf)"')
+_ASOF = re.compile(r"(\d{4})/(\d{1,2})/(\d{1,2})\s*申込み現在")
 
 # 需給の見立ての基準(初期値。運用で見直したら docs/DECISIONS.md に残す)
 BUY_SURGE = 0.10        # 買残が前日比 +10% 以上
@@ -118,12 +125,108 @@ def parse_daily_excel(raw: bytes | str | Path) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=COLUMNS)
 
 
-def find_daily_url(html: str, base: str = INDEX_URL) -> str:
-    """公表ページの HTML から、最新日の mtdaily.xlsx の URL を探す。"""
-    links = {m.group(2): m.group(1) for m in _DAILY_LINK.finditer(html)}
+def find_daily_url(html: str, base: str = INDEX_URL, *, pattern=_DAILY_LINK) -> str:
+    """公表ページの HTML から、最新日のファイル(既定は mtdaily.xlsx)の URL を探す。"""
+    links = {m.group(2): m.group(1) for m in pattern.finditer(html)}
     if not links:
-        raise ValueError("公表ページに mtdaily.xlsx へのリンクが見つかりません")
+        raise ValueError("公表ページに目的のファイルへのリンクが見つかりません")
     return urljoin(base, links[max(links)])
+
+
+def find_all_url(html: str, base: str = ALL_URL) -> str:
+    """銘柄別信用取引残高のページから、最新日の mtall.pdf(全銘柄)の URL を探す。"""
+    return find_daily_url(html, base, pattern=_ALL_LINK)
+
+
+# mtall.pdf は横向き(ページが90度回転)で、行が x 方向、列が y 方向に並ぶ。列の y 座標は固定
+_PDF_VALUE_Y = (551, 510, 479, 438, 396, 365, 324, 283, 241, 200, 158, 117, 76, 34)   # 売残,前日比,上場比,買残,前日比,上場比,
+#                                                                                      一般売,前日比,制度売,前日比,一般買,前日比,制度買,前日比
+_PDF_ISIN_Y, _PDF_CODE_Y, _PDF_LOAN_Y, _PDF_NAME_Y = 616, 649, 682, 690
+_PDF_Y_TOL = 6.0
+_PDF_ROW_TOL = 2.5
+_MARKETS = ("投信等", "プライム", "スタンダード", "グロース")   # 投信等を先に(ETF の名前に「グロース」等が入るため)
+
+
+def parse_all_pdf(raw: bytes | str | Path) -> pd.DataFrame:
+    """mtall.pdf(銘柄別信用取引残高。全銘柄)を、列が COLUMNS の DataFrame にする。
+
+    表の罫線は使わず、単語の座標から読む(pdfplumber の表抽出は全109ページで約220秒かかったため)。
+    1銘柄が「株数」行と「金額」行の2行で、必要な数字・コード・ISIN・市場は株数行だけで足りる。
+    flags は PDF に無いので空(merge_flags で日々公表銘柄の印を足す)。
+    """
+    import pymupdf
+
+    doc = pymupdf.open(stream=raw, filetype="pdf") if isinstance(raw, (bytes, bytearray)) else pymupdf.open(raw)
+    as_of, out = None, []
+    for page in doc:
+        if as_of is None:
+            m = _ASOF.search(page.get_text())
+            if m:
+                as_of = date(int(m[1]), int(m[2]), int(m[3]))
+        out += rows_from_words(page.get_text("words"))     # (x0, y0, x1, y1, text, ...)
+    if as_of is None:
+        raise ValueError("信用残 PDF に基準日(申込み現在)が見つかりません。JPX の形式が変わった可能性があります")
+    if not out:
+        raise ValueError("信用残 PDF に銘柄の行が見つかりません。JPX の形式が変わった可能性があります")
+    df = pd.DataFrame(out, columns=COLUMNS)
+    df["date"] = as_of
+    return df
+
+
+def rows_from_words(words: list) -> list[dict]:
+    """1ページ分の単語(座標つき)から、銘柄ごとの行(date 以外の列)を取り出す(純関数)。"""
+    out = []
+    for x0, y0, _, _, text, *_ in words:
+        if not text.startswith("株数"):
+            continue
+        line = [w for w in words if abs(w[0] - x0) <= _PDF_ROW_TOL]
+        by_y = sorted(((w[1], w[4]) for w in line), key=lambda t: t[0])
+        isin = next((t for y, t in by_y if abs(y - _PDF_ISIN_Y) < _PDF_Y_TOL and _ISIN.match(t)), None)
+        code = next((t for y, t in by_y if abs(y - _PDF_CODE_Y) < _PDF_Y_TOL), None)
+        if not (isin and code):
+            continue
+        vals: dict[int, float | None] = {}
+        numbers = [(y, t) for y, t in by_y if y < _PDF_ISIN_Y - 15 and t != "▲"]
+        for y, t in numbers:
+            col = min(range(14), key=lambda i: abs(_PDF_VALUE_Y[i] - y))
+            if abs(_PDF_VALUE_Y[col] - y) < _PDF_Y_TOL:
+                vals[col] = _pdf_value(t)
+        for y, t in by_y:                   # ▲ は数字のすぐ左(y が大きい側)にあり、その数字を負にする
+            if t == "▲":
+                below = [c for c in vals if _PDF_VALUE_Y[c] < y and y - _PDF_VALUE_Y[c] < 30]
+                if below and vals[max(below, key=lambda c: _PDF_VALUE_Y[c])] is not None:
+                    c = max(below, key=lambda c: _PDF_VALUE_Y[c])
+                    vals[c] = -abs(vals[c])
+        text_cells = [t for y, t in by_y if y >= _PDF_NAME_Y and y < 790]
+        joined = "".join(text_cells)
+        market = next((mk for mk in _MARKETS if mk in joined), "")
+        name = " ".join(t for t in text_cells if t not in _MARKETS).replace("\u3000", " ").strip()
+        for mk in _MARKETS:
+            name = name.replace(mk, "").strip()
+        loan_cell = "".join(t for y, t in by_y if abs(y - _PDF_LOAN_Y) < _PDF_Y_TOL)
+        g = vals.get
+        out.append({
+            "date": None, "code": normalize_code(code), "name": name, "flags": "",
+            "market": market, "loan_type": "貸" if "貸" in loan_cell else "制" if "制" in loan_cell else "他",
+            "sell_bal": g(0), "sell_chg": g(1), "sell_listed_pct": g(2),
+            "buy_bal": g(3), "buy_chg": g(4), "buy_listed_pct": g(5),
+            "sell_general": g(6), "sell_system": g(8), "buy_general": g(10), "buy_system": g(12),
+        })
+    return out
+
+
+def _pdf_value(t: str) -> float | None:
+    return _num(t.replace("%", ""))
+
+
+def merge_flags(all_df: pd.DataFrame, daily_df: pd.DataFrame) -> pd.DataFrame:
+    """全銘柄(PDF)に、日々公表銘柄(xlsx)にだけある規制の印(規/日/監…)を、同じ日・同じコードで付ける。"""
+    if all_df.empty or daily_df.empty or all_df["date"].iloc[0] != daily_df["date"].iloc[0]:
+        return all_df
+    marks = dict(zip(daily_df["code"], daily_df["flags"]))
+    out = all_df.copy()
+    out["flags"] = [marks.get(c, f) for c, f in zip(out["code"], out["flags"])]
+    return out
 
 
 def upsert_margin(con, df: pd.DataFrame, first_observed_at=None) -> int:
@@ -153,14 +256,29 @@ def _isnull(v) -> bool:
 
 
 def fetch_margin(cfg, con, url: str | None = None) -> int:
-    """最新日の信用残を取得して margin_daily に保存する。保存した銘柄数を返す。"""
+    """最新日の信用残を取得して margin_daily に保存する。保存した銘柄数を返す。
+
+    全銘柄の PDF(mtall.pdf)を主とし、日々公表銘柄の xlsx から規制の印を足す。
+    PDF が読めなかったときは、xlsx(日々公表銘柄のみ)だけを保存して、その旨を fetch_log に残す。
+    url を渡したときは、その xlsx だけを取り込む。
+    """
     collect = cfg.section("collect")
     limiter = RateLimiter(float(collect.get("request_interval_sec", 1.0)),
                           collect.get("user_agent", "assoc-research/0.1"))
-    if url is None:
+    if url is not None:
+        df = parse_daily_excel(limiter.get(url, timeout=60).content)
+    else:
         index = collect.get("jpx_margin_index_url") or INDEX_URL
-        url = find_daily_url(limiter.get(index).text, index)
-    df = parse_daily_excel(limiter.get(url, timeout=60).content)
+        daily = parse_daily_excel(limiter.get(find_daily_url(limiter.get(index).text, index), timeout=60).content)
+        page = collect.get("jpx_margin_all_url") or ALL_URL
+        try:
+            all_df = parse_all_pdf(limiter.get(find_all_url(limiter.get(page).text, page), timeout=180).content)
+            df = merge_flags(all_df, daily)
+            if len(df) < 3000 or df["date"].iloc[0] != daily["date"].iloc[0]:
+                raise ValueError(f"全銘柄 PDF が不完全です({len(df)} 銘柄、基準日 {df['date'].iloc[0]})")
+        except Exception as e:  # noqa: BLE001 - PDF の失敗で日々公表銘柄まで失わない
+            log_fetch(con, "jpx_margin_all", False, 0, f"{type(e).__name__}: {e}")
+            df = daily
     n = upsert_margin(con, df)
     log_fetch(con, "jpx_margin_asof", True, n, str(df["date"].iloc[0]))
     return n
@@ -311,7 +429,7 @@ def render_report(m: pd.DataFrame, top: int = 10) -> str:
          ["code", "name", "buy_bal", "buy_pctile", "buy_nd_pct"], "buy_listed_pct"),
     ]
     out = [f"# 信用残の需給指標 {d}", "",
-           f"対象 {len(stocks)} 銘柄(日々公表銘柄。ETF 等を除く)。単位は株。"
+           f"対象 {len(stocks)} 銘柄(ETF 等を除く。全銘柄の信用残が取れた日は全銘柄、PDF が読めなかった日は日々公表銘柄のみ)。単位は株。"
            f"残高が上場株数の{MIN_LISTED_PCT}%未満の側は順位・見立てから外しています。"
            "見立ては目安で、売買の判断そのものではありません。", ""]
     flagged = stocks[stocks["signals"] != ""]
