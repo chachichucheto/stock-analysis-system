@@ -77,6 +77,8 @@ class _Cluster:
         self.members: list[ClusterInput] = [first]
         self.title_bigrams = char_bigrams(first.title)
         self.entities: set[str] = set(first.entities)
+        self.indexed_bg: set[str] = set()   # 転置索引に登録済みの要素(cluster() が使う)
+        self.indexed_en: set[str] = set()
 
     def add(self, item: ClusterInput) -> None:
         self.members.append(item)
@@ -89,24 +91,62 @@ class _Cluster:
         return max(title_sim, entity_sim)
 
 
+def _prefix_keys(keys: set[str], postings: dict[str, list[int]]) -> list[str]:
+    """類似度(Jaccard)が 0.5 以上になるクラスタは、この集合の要素の半分以上を共有する。したがって、共有数の少ない順(珍しい要素)に
+    len - ceil(len/2) + 1 個だけ見れば、該当するクラスタを必ず1つは拾える(鳩の巣原理)。珍しい要素を先に使い、候補を絞る。"""
+    n = len(keys)
+    need = n - (n + 1) // 2 + 1
+    return sorted(keys, key=lambda k: len(postings.get(k, ())))[:need]
+
+
 def cluster(items: list[ClusterInput], *, threshold: float = 0.5) -> list[Event]:
     """見出し・固有表現の類似度でイベントにまとめる(純関数)。
 
     items は同じ日にまとめて渡す想定(1日単位でのイベント化。docs/DESIGN.md §6.2)。
+
+    全クラスタと総当たりで比べると、数日分(数千件)で数分かかる(2026-10-17:6,865件で224秒。D43)。
+    しきい値以上になるクラスタは、見出しの文字2-gram か固有表現の半分以上を共有するので、転置索引で候補を絞ってから
+    厳密に比べる。結果は総当たりと同じ(同点は先に作ったクラスタが勝つ)。threshold が 0.5 未満のときは絞れないので総当たりに戻す。
     """
     clusters: list[_Cluster] = []
+    bg_post: dict[str, list[int]] = {}
+    en_post: dict[str, list[int]] = {}
+    prune = threshold >= 0.5
+
+    def register(ci: int, c: _Cluster, bg: set[str], ents: set[str]) -> None:
+        for k in bg - c.indexed_bg:
+            bg_post.setdefault(k, []).append(ci)
+        for k in ents - c.indexed_en:
+            en_post.setdefault(k, []).append(ci)
+        c.indexed_bg |= bg
+        c.indexed_en |= ents
+
     for item in items:
         if not item.entities:
             item.entities = list(extract_entities(item.title))
+        bg, ents = char_bigrams(item.title), set(item.entities)
+        if prune:
+            cand: set[int] = set()
+            for k in _prefix_keys(bg, bg_post):
+                cand.update(bg_post.get(k, ()))
+            for k in _prefix_keys(ents, en_post):
+                cand.update(en_post.get(k, ()))
+            order = sorted(cand)
+        else:
+            order = range(len(clusters))
         best, best_score = None, 0.0
-        for c in clusters:
-            score = c.similarity(item)
+        for ci in order:
+            c = clusters[ci]
+            score = max(jaccard(c.title_bigrams, bg), jaccard(c.entities, ents))
             if score > best_score:
-                best, best_score = c, score
+                best, best_score, best_i = c, score, ci
         if best is not None and best_score >= threshold:
             best.add(item)
+            register(best_i, best, best.title_bigrams, best.entities)
         else:
-            clusters.append(_Cluster(item))
+            c = _Cluster(item)
+            clusters.append(c)
+            register(len(clusters) - 1, c, c.title_bigrams, c.entities)
 
     events = []
     for c in clusters:

@@ -23,7 +23,37 @@ class Thresholds:
     gate_max_events_cold_start: int = 10  # 履歴が無い立ち上げの間(比べる相手が無い間)のニュース上限(D36)
     gate_max_disclosure_events: int = 3  # 開示(TDnet・EDINET)の別枠の上限。ニュースと同じ枠で競わせると、
                                          # 媒体数の少ない開示が構造的に負けるため(2026-09-30 予行演習で確認。DECISIONS D34)
-    reacted_sigma: float = 2.0           # 「反応した」:当日の TOPIX 超過が普段の値動きの2倍以上
+    # テーマ別の見出し件数の急増(events/burst.py。DECISIONS D37)
+    burst_ratio: float = 2.5             # 過去の日別件数の中央値の何倍で「増えた日」とするか(辞書で上書きできる)
+    burst_min_count: int = 8             # 1日の件数の下限
+    burst_lookback_days: int = 28        # 中央値を取る日数
+    burst_min_history_days: int = 14     # これ未満の間は、倍率を厳しくする(中央値が不安定なため)
+    burst_early_days: int = 4            # 比べる日がこれ未満の間は、辞書の cold_start_count を書いたテーマだけ検知する
+    burst_early_ratio_mult: float = 1.3  # 履歴が短い間(4〜13日)は、倍率をこの倍に厳しくする
+    burst_recent_days: int = 7           # 「連日」を見る日数
+    burst_persist_days: int = 3          # 直近でこの日数以上「増えた日」なら、当日が落ちても急増とする
+    # テーマの温度の機械更新(pack/auto_temperature.py。D37)
+    temp_up_excess_5d: float = 0.05      # 代表銘柄の5日の超過(中央値−TOPIX)がこれ以上 → 上昇中
+    temp_up_excess_1m: float = 0.10      # 1か月の超過がこれ以上 → 上昇中
+    temp_down_excess_1m: float = -0.08   # 1か月の超過がこれ以下(5日も下向き)→ 冷却中
+    # 日中の速報(alerts.py。D38)
+    alert_theme_day_excess: float = 0.04   # テーマの代表銘柄の当日の超過(中央値−TOPIX)がこれ以上
+    alert_theme_5d_excess: float = 0.08    # 5日の超過がこれ以上
+    alert_stock_day_return: float = 0.10   # 1銘柄の当日の上げがこれ以上
+    # 株価の大きな動き(events/price_shock.py。D40)。報道の量では拾えない相場の急変を、株価から別枠で通す
+    shock_theme_excess_5d: float = 0.08  # テーマの代表銘柄の5日の中央値が、TOPIX よりこれ以上、上下に離れた
+    shock_min_stocks: int = 3            # 株価が取れた代表銘柄の数の下限
+    shock_topix_day: float = 0.02        # TOPIX が直近5営業日のどこかで1日にこれ以上下げた
+    shock_topix_5d: float = 0.04         # TOPIX が5営業日でこれ以上下げた
+    # 辞書に無い話題:急に増えた語(events/terms.py。D39)
+    terms_min_count: int = 8             # 当日、その語を含む記事数の下限
+    terms_ratio: float = 3.0             # 過去の日別記事数の中央値の何倍で急増とするか
+    terms_floor: float = 2.0             # 過去に出ていない語の、中央値の代わり(少数のぶれで鳴らさないため)
+    terms_min_days: int = 4              # 比べる日がこれ未満の間は検知しない
+    terms_min_relevant_share: float = 0.3  # その語を含む見出しのこの割合以上に、投資との関係(社名・テーマ・事象の語)が必要
+    terms_max_share: float = 0.15        # 当日の記事の何割を超えて含まれる語は、どの話題にも出る語として除く
+    ignored_grace_days: int = 2          # 開始からこの営業日数未満は、反応の有無で「無視されている疑い」と判定しない(D41)
+    reacted_sigma: float = 2.0         # 「反応した」:当日の TOPIX 超過が普段の値動きの2倍以上
     attention_high_pct: float = 0.80     # 注目度が「高い」:過去90日の上位20%
     max_candidates_per_scenario: int = 5
     max_picks: int = 3

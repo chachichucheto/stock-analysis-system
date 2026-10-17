@@ -48,8 +48,30 @@ def cmd_backfill_tdnet(args) -> int:
     return 0
 
 
+def cmd_alert(args) -> int:
+    """見出しの急増と代表銘柄の値動きを見て、新しいものを通知する(毎時の収集のあとに自動でも動く)。"""
+    from assoc.alerts import run_alerts
+    new = run_alerts(_app(args), notify=not args.no_toast, price=False if args.no_price else None)
+    for a in new:
+        print(f"速報: {a.title}\n  {a.detail}")
+    if not new:
+        print("新しい速報はありません")
+    return 0
+
+
 def cmd_prepare(args) -> int:
-    print(f"入力パック: {_app(args).prepare(_date(args.date))}")
+    app = _app(args)
+    day = _date(args.date)
+    # 代表銘柄の株価を補完して、テーマ別の騰落率を作り直してからパックを作る(D37。従来は手動で、株価が数日古いままだった)
+    if day is None or day == app.today():
+        from assoc.market import theme_returns
+        try:
+            info = theme_returns.refresh(app, day or app.today())
+            note = f" ※補完失敗: {info['fill_error']}" if "fill_error" in info else ""
+            print(f"テーマ別の騰落率: {info['themes']}テーマ(基準日 {info['as_of']}){note}")
+        except Exception as e:  # 株価が取れなくても、ニュース側のパックは作る
+            print(f"テーマ別の騰落率を更新できませんでした({type(e).__name__}: {e})。前回の値で続けます")
+    print(f"入力パック: {app.prepare(day)}")
     return 0
 
 
@@ -248,6 +270,11 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--sources", help="カンマ区切り(例: tdnet,rss)。省略時はすべて")
     s.set_defaults(func=cmd_collect)
 
+    s = sub.add_parser("alert", help="日中の速報:見出しの急増・代表銘柄の値動きを見て、新しいものを通知する")
+    s.add_argument("--no-toast", action="store_true", help="Windows の通知を出さない")
+    s.add_argument("--no-price", action="store_true", help="株価を見ない(見出しだけ)")
+    s.set_defaults(func=cmd_alert)
+
     s = sub.add_parser("backfill-tdnet", help="TDnet の過去分(約1か月)をまとめて取り込む")
     s.add_argument("--days", type=int, default=31)
     s.set_defaults(func=cmd_backfill_tdnet)
@@ -324,4 +351,12 @@ def main(argv: list[str] | None = None) -> int:
         _refresh_dashboard(args)
     if args.command in ("collect", "prepare", "nextday") and code == 0:
         _refresh_shared(args)
+    if args.command == "collect" and code == 0:
+        # 収集のたびに速報を見る(D38)。失敗しても収集の結果は変えない
+        try:
+            from assoc.alerts import run_alerts
+            for a in run_alerts(_app(args)):
+                print(f"速報: {a.title}")
+        except Exception as e:
+            print(f"速報の確認に失敗: {type(e).__name__}: {e}")
     return code

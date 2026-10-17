@@ -16,7 +16,7 @@ from assoc.config import Thresholds
 from assoc.market import indicators as ind
 from assoc.market.prices import COLUMNS, PriceSource
 from assoc.scoring.confidence import confidence as calc_confidence
-from assoc.scoring.diagnosis import DiagnosisInput, diagnose
+from assoc.scoring.diagnosis import DiagnosisInput, diagnose, 判定前, 無視されている疑い
 from assoc.scoring.freshness import FreshnessInput, freshness as calc_freshness
 from assoc.scoring.picks import CandidateInput, RankedPick, rank_picks
 from assoc.scoring.priced_in import priced_in as calc_priced_in
@@ -177,6 +177,11 @@ def evaluate(scenarios: dict[str, ScenarioState], loader: PriceLoader, topix_cod
             label = diagnose(DiagnosisInput(attention_high=attention_high.get(sc.event_id, False),
                                             tier1_reacted=tier1_reacted, candidate_reacted=cand_reacted,
                                             priced_in_value=pin), th)
+            # 開始した当日・翌日は、株価が反応する時間が無い。この間に「無視されている疑い」と判定して確率を半分にすると、
+            # 新しいシナリオはどれも初日に自信度が半減してしまう(D41。10/7・10/17 の全候補で起きていた)
+            if (label == 無視されている疑い and started and sc.started_date is not None
+                    and business_days_between(sc.started_date, eval_date) < th.ignored_grace_days):
+                label = 判定前
             prob, factors = adjust_probability(cand["realization_prob"], sc, cand, label, temp,
                                                initial_strength.get(sc.scenario_id, sc.strength))
             conf = calc_confidence(prob, median, pin, fresh, th)

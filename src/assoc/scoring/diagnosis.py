@@ -13,6 +13,7 @@ from assoc.config import Thresholds
 時間差あり = "時間差あり"
 無視されている疑い = "⚠ 無視されている疑い"
 未発見 = "未発見"
+判定前 = "判定前(開始直後)"
 
 
 @dataclass(frozen=True)

@@ -1,0 +1,85 @@
+# マクロの材料 → 影響を受けるテーマ(連想の辞書。D41)
+#
+# 個別株のニュースは「その会社の関連銘柄」を探せば連想できるが、マクロの材料(米CPI・金利・為替・原油・AIへの資金不安など)は、
+# 見出しに銘柄名が出ない。人が頭の中でしている「金利が上がれば銀行・保険」「円安なら輸出」「AIが売られれば他へ資金が移る」を、
+# ここに書いておき、入力パックに『今日の見出しに出ている材料 → 影響先のテーマと、その株価の反応』として載せる。
+# 辞書は推測の起点で、結論ではない(効くかどうかは、株価の反応と裏取りで確かめる)。足すときは、書いた日と根拠を DECISIONS に残す。
+#
+# words      見出しにこのどれかを含めば、その材料が出ているとみなす
+# min_count  直近3日で、語を含む見出し(同じ記事は1件)の下限
+# effects    影響先:theme(THEMES.md のID)、dir(up=上がりやすい / down=下がりやすい)、why(経路)
+rates_up_us:
+  name: 米国の物価上振れ・利上げ観測(米CPI・FRB)
+  words: [米CPI, 消費者物価, 利上げ観測, FRB, 米長期金利, 米金利上昇]
+  min_count: 5
+  effects:
+    - {theme: P01, dir: down, why: "割高なグロース株(AI・半導体)は金利上昇で割引が大きくなり売られやすい"}
+    - {theme: M15, dir: up, why: "金利上昇は銀行・保険の利ざや・運用益に追い風(日本でも利上げ観測が重なるとき)"}
+    - {theme: M11, dir: up, why: "日米金利差が開けば円安に振れやすく、輸出企業に追い風"}
+    - {theme: M13, dir: down, why: "金利上昇・ドル高は金(利息を生まない資産)に逆風"}
+boj_hike:
+  name: 日銀の利上げ観測
+  words: [日銀, 利上げ, 植田, 金融政策決定会合, 追加利上げ]
+  min_count: 8
+  effects:
+    - {theme: F06, dir: up, why: "利上げは預貸利ざやの拡大につながる(銀行)"}
+    - {theme: M15, dir: up, why: "保険の運用利回りの改善(生保・損保)"}
+    - {theme: M11, dir: down, why: "利上げで円高に振れれば輸出企業の採算に逆風"}
+    - {theme: M12, dir: up, why: "円高は輸入・内需企業のコストを下げる"}
+yen_weak:
+  name: 円安
+  words: [円安, ドル高, 円売り, 158円, 159円, 160円]
+  min_count: 6
+  effects:
+    - {theme: M11, dir: up, why: "輸出企業の円換算の利益が増える"}
+    - {theme: M12, dir: down, why: "輸入コストが増える(内需・小売)"}
+    - {theme: M21, dir: up, why: "円安は訪日客の購買力を高める"}
+yen_strong:
+  name: 円高
+  words: [円高, ドル安, 円買い, 円急伸]
+  min_count: 6
+  effects:
+    - {theme: M11, dir: down, why: "輸出企業の円換算の利益が減る"}
+    - {theme: M12, dir: up, why: "輸入・内需企業のコストが下がる"}
+ai_funding_fear:
+  name: AI投資の資金調達への懸念・AIバブル警戒
+  words: [AIバブル, AI投機, ネオクラウド, コアウィーブ, 資金調達, データセンター 延期, 社債 下落, 循環取引]
+  min_count: 5
+  effects:
+    - {theme: P01, dir: down, why: "AI向け設備投資の前提(資金が続く)が揺らぐ"}
+    - {theme: M01, dir: down, why: "データセンター向け電力・配線の受注期待が後退"}
+    - {theme: M02, dir: down, why: "光通信はAIデータセンター向けの比率が高い"}
+    - {theme: P06, dir: up, why: "AI以外で防御的に買われる資金の受け皿(セキュリティは景気に左右されにくい需要)"}
+    - {theme: P07, dir: up, why: "内需・ディフェンシブなコンテンツへ資金が逃げる"}
+risk_off:
+  name: 株価の急落・リスク回避
+  words: [株安, 急落, 暴落, 大幅安, 売り殺到, 取引停止, 世界同時株安]
+  min_count: 15
+  effects:
+    - {theme: M13, dir: up, why: "安全資産として金が買われやすい(金利上昇局面を除く)"}
+    - {theme: M12, dir: up, why: "円高に振れやすく、内需株が相対的に強い"}
+    - {theme: M18, dir: up, why: "高配当株は下値が堅いと見られやすい"}
+    - {theme: E05, dir: up, why: "金融危機・急落テーマそのものの温度が上がる"}
+oil_up:
+  name: 原油高
+  words: [原油高, 原油価格, WTI, 中東情勢, ホルムズ, 産油国]
+  min_count: 8
+  effects:
+    - {theme: G03, dir: up, why: "資源開発(上流)の収益が増える"}
+    - {theme: M14, dir: up, why: "エネルギー価格の上昇は物価に波及(値上げ)"}
+    - {theme: M11, dir: down, why: "ガソリン・原料高は輸送・内需の重しになる"}
+tariff:
+  name: 米国の関税・通商摩擦
+  words: [関税, 通商, 貿易摩擦, 対中規制, 輸出規制]
+  min_count: 10
+  effects:
+    - {theme: M11, dir: down, why: "対米輸出企業の採算悪化"}
+    - {theme: F05, dir: up, why: "経済安全保障・国内調達の議論が強まる"}
+    - {theme: P13, dir: up, why: "重要鉱物・国産化への関心"}
+disaster:
+  name: 地震・大規模災害
+  words: [震度6, 震度7, 南海トラフ, 津波, 大規模停電, 豪雨 被害]
+  min_count: 6
+  effects:
+    - {theme: P10, dir: up, why: "防災・国土強靱化の投資が増える"}
+    - {theme: E01, dir: up, why: "大災害テーマの温度"}

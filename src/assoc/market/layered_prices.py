@@ -232,24 +232,74 @@ def history_last_date(cfg) -> date | None:
     return pd.Timestamp(hi).date() if hi is not None else None
 
 
+_TZ_CACHE_SET = False
+
+
+def _private_tz_cache(yf) -> None:
+    """yfinance の時間帯キャッシュ(SQLite)を、このプロセス専用の場所にする。
+
+    既定の場所は全プロセス共通で、毎時の収集・夜の処理・手動実行が重なると
+    `database disk image is malformed` で銘柄が取れなくなる(2026-10-07 に 7137.T で発生。D37)。"""
+    global _TZ_CACHE_SET
+    if _TZ_CACHE_SET:
+        return
+    import tempfile
+    try:
+        yf.set_tz_cache_location(tempfile.mkdtemp(prefix="yf_tz_"))
+    except Exception:
+        pass
+    _TZ_CACHE_SET = True
+
+
+# Yahoo が制限(429)をかけると、銘柄ごとの再試行と待ちで、パック作成が10分以上止まる(2026-10-17。D43)。
+# 1回のプロセスで Yahoo にかける時間の予算と、連続して空振りしたら諦める回数を決め、超えたら以降の取得をすぐ諦める。
+# 諦めても、手元の株価ファイルで計算は続く(古い銘柄は『データ無し』として扱われる)。
+YAHOO_BUDGET_SECONDS = 90.0
+YAHOO_MAX_EMPTY_STREAK = 3
+_YAHOO_SPENT = 0.0
+_YAHOO_EMPTY_STREAK = 0
+
+
+def yahoo_gave_up() -> bool:
+    return _YAHOO_SPENT >= YAHOO_BUDGET_SECONDS or _YAHOO_EMPTY_STREAK >= YAHOO_MAX_EMPTY_STREAK
+
+
+def reset_yahoo_budget() -> None:
+    global _YAHOO_SPENT, _YAHOO_EMPTY_STREAK
+    _YAHOO_SPENT, _YAHOO_EMPTY_STREAK = 0.0, 0
+
+
 def _download_chunk(symbols: list[str], start: date, end: date, retries: int = 2) -> pd.DataFrame:
     """yfinance から調整なしで取得する。失敗・空のときは短い待ちで最大 retries 回やり直す。
 
     上場廃止などで本当にデータが無い銘柄でも、待ち時間は数秒に収める(ランキングの計算中に、
-    1銘柄ごとに長く待たせないため)。"""
+    1銘柄ごとに長く待たせないため)。時間の予算を使い切った、または空振りが続いた(制限の疑い)ときは、
+    Yahoo に問い合わせず、すぐ空を返す。"""
+    global _YAHOO_SPENT, _YAHOO_EMPTY_STREAK
+    if yahoo_gave_up():
+        return pd.DataFrame()
     import yfinance as yf
+    _private_tz_cache(yf)
 
-    for attempt in range(retries):
-        try:
-            df = yf.download(symbols, start=start, end=end + timedelta(days=1), progress=False,
-                             auto_adjust=False, group_by="ticker", threads=False)
-            if df is not None and not df.empty:
-                return df
-        except Exception:
-            pass
-        if attempt + 1 < retries:
-            time.sleep(3 * (3 ** attempt))              # 3秒 → 9秒(レート制限への簡易バックオフ)
-    return pd.DataFrame()
+    t0 = time.time()
+    try:
+        for attempt in range(retries):
+            try:
+                df = yf.download(symbols, start=start, end=end + timedelta(days=1), progress=False,
+                                 auto_adjust=False, group_by="ticker", threads=False, timeout=15)
+                if df is not None and not df.empty:
+                    _YAHOO_EMPTY_STREAK = 0
+                    return df
+            except Exception:
+                pass
+            if yahoo_gave_up():
+                break
+            if attempt + 1 < retries:
+                time.sleep(3 * (3 ** attempt))              # 3秒 → 9秒(レート制限への簡易バックオフ)
+        _YAHOO_EMPTY_STREAK += 1
+        return pd.DataFrame()
+    finally:
+        _YAHOO_SPENT += time.time() - t0
 
 
 def _split_chunk(df: pd.DataFrame, symbols: list[str]) -> dict[str, pd.DataFrame]:
@@ -295,6 +345,8 @@ def fill_gap(cfg, codes: list[str], *, today: date, start: date | None = None,
         part = codes[i:i + chunk]
         symbols = [_symbol(c) for c in part]
         by_symbol = _split_chunk(_download_chunk(symbols, start, today), symbols)
+        for s_ in [x for x in symbols if x not in by_symbol]:      # 取れなかった銘柄は、1銘柄ずつもう一度試す
+            by_symbol.update(_split_chunk(_download_chunk([s_], start, today, retries=1), [s_]))
         for c, s in zip(part, symbols):
             df = by_symbol.get(s)
             if df is None or df.empty:
@@ -305,10 +357,14 @@ def fill_gap(cfg, codes: list[str], *, today: date, start: date | None = None,
             df["code"] = c
             frames.append(df[["code"] + COLUMNS])
             ok_codes.append(c)
-        if i + chunk < len(codes):
+        if i + chunk < len(codes) and not yahoo_gave_up():
             time.sleep(pause)
 
     new = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(columns=["code"] + COLUMNS)
+    if new.empty:                                       # 何も取れなかった(制限・休場など)ときは、ファイルを書き換えない
+        return {"start": start.isoformat(), "requested": len(codes), "ok": 0, "empty": empty_codes,
+                "rows_downloaded": 0, "file_rows": None, "file_codes": None, "path": str(path),
+                "gave_up": yahoo_gave_up()}
     con = duckdb.connect()
     try:
         con.register("new_rows", new)
