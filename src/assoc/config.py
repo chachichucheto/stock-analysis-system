@@ -45,6 +45,10 @@ class Thresholds:
     shock_min_stocks: int = 3            # 株価が取れた代表銘柄の数の下限
     shock_topix_day: float = 0.02        # TOPIX が直近5営業日のどこかで1日にこれ以上下げた
     shock_topix_5d: float = 0.04         # TOPIX が5営業日でこれ以上下げた
+    # 原因が分からない急騰・急落(events/unexplained.py。D44)
+    unexplained_min_excess: float = 0.07       # 1日のTOPIX超過がこれ以上(上下とも)
+    unexplained_min_sigma: float = 3.0         # 普段の値動きの何倍か
+    unexplained_min_volume_ratio: float = 2.5  # 出来高が直近20日平均の何倍か
     # 辞書に無い話題:急に増えた語(events/terms.py。D39)
     terms_min_count: int = 8             # 当日、その語を含む記事数の下限
     terms_ratio: float = 3.0             # 過去の日別記事数の中央値の何倍で急増とするか

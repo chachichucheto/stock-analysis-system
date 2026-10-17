@@ -83,6 +83,46 @@ a { color: var(--accent); }
   border: 1px solid var(--border); color: var(--text-secondary); white-space: nowrap; }
 .kindtag.disc { color: var(--warning); }
 #news-table td.t { white-space: nowrap; color: var(--text-muted); }
+
+/* ---- D44:タブ分け・色づけ ---- */
+:root { --c-judge: #4c9aff; --c-check: #f5a524; --c-system: #2fc487; --c-news: #b794f6;
+  --gold: #fbbf24; --pos: #34d399; --neg: #f87171; --info: #60a5fa; }
+.main-tabs { gap: 8px; margin: 8px 0 18px; border-bottom: 2px solid var(--border-strong); }
+.main-tab-btn { padding: 10px 22px; font-size: 15px; font-weight: 600; border-width: 1px; border-bottom: none;
+  border-top: 4px solid var(--tc, var(--border)); color: var(--text-secondary); }
+.main-tab-btn:hover { background: var(--surface-2); color: var(--text-primary); }
+.main-tab-btn.active { background: var(--tc); color: #0b0b0b; border-color: var(--tc); }
+.main-tab-btn small { font-weight: 400; font-size: 11px; opacity: .85; margin-left: 6px; }
+.tab-judge { --tc: var(--c-judge); } .tab-check { --tc: var(--c-check); }
+.tab-system { --tc: var(--c-system); } .tab-news { --tc: var(--c-news); }
+.tabpane section h2 { border-left: 6px solid var(--tc); padding-left: 10px; font-size: 17px; }
+.tabpane nav a { border-color: var(--tc); }
+.tabpane nav a:hover { background: var(--tc); color: #0b0b0b; }
+.tile { border-left: 5px solid var(--tc, var(--accent)); }
+.tile .value { color: var(--text-primary); }
+.card { border-top: 3px solid var(--tc, var(--accent)); }
+.card.pick { border-top-color: var(--good); }
+.card.caution { border-top-color: var(--critical); }
+tbody tr:nth-child(even) td { background: rgba(255,255,255,0.025); }
+tbody tr:hover td { background: rgba(76,154,255,0.10); }
+th { background: #2a2a28; color: #e5e4da; }
+.pos { color: var(--pos); } .neg { color: var(--neg); } .muted { color: var(--text-muted); }
+.stars { color: var(--gold); }
+.tier { display: inline-block; padding: 1px 10px; border-radius: 10px; font-size: 12px; font-weight: 700; color: #0b0b0b; }
+.tier.pick { background: var(--good); } .tier.watch { background: var(--gold); } .tier.caution { background: var(--critical); }
+.scorebar { display: inline-block; vertical-align: middle; width: 84px; height: 9px; border-radius: 5px;
+  background: rgba(255,255,255,0.12); margin-right: 8px; overflow: hidden; }
+.scorebar i { display: block; height: 100%; background: linear-gradient(90deg, #2563eb, #34d399); }
+.scorebar.caution i { background: linear-gradient(90deg, #b45309, #f87171); }
+.score { font-weight: 700; font-variant-numeric: tabular-nums; }
+.badge.info { --dot: var(--info); } .badge.muted { --dot: var(--text-muted); }
+.help { background: var(--surface-1); border: 1px solid var(--border); border-left: 5px solid var(--c-judge);
+  border-radius: 8px; padding: 10px 14px; margin: 8px 0 12px; font-size: 13px; line-height: 1.7; }
+.help b { color: var(--gold); }
+.verdict { font-size: 16px; padding: 12px 16px; margin: 6px 0 14px; border-radius: 8px;
+  background: var(--surface-1); border: 1px solid var(--border); border-left: 6px solid var(--good); }
+.verdict.none { border-left-color: var(--text-muted); }
+.verdict b { font-size: 20px; }
 """
 
 
@@ -200,14 +240,24 @@ NEWS_JS = """
   $('nf-reset').onclick = function () { $('nf-q').value = ''; $('nf-kind').value = ''; $('nf-media').value = ''; $('nf-day').value = ''; apply(); };
   apply();
 })();
+var TABS = ['judge', 'check', 'system', 'news'];
 function showMainTab(name) {
-  ['dash', 'news'].forEach(function (t) {
+  if (TABS.indexOf(name) < 0) name = 'judge';
+  TABS.forEach(function (t) {
     document.getElementById('tab-' + t).hidden = (t !== name);
     document.getElementById('btn-' + t).classList.toggle('active', t === name);
   });
-  try { history.replaceState(null, '', name === 'news' ? '#news' : location.pathname); } catch (e) {}
+  try { history.replaceState(null, '', '#' + name); } catch (e) {}
+  window.scrollTo(0, 0);
 }
-if (location.hash === '#news') showMainTab('news');
+(function () {
+  var h = (location.hash || '').replace('#', '');
+  if (TABS.indexOf(h) >= 0) { showMainTab(h); return; }
+  // 旧いリンク(#picks など)が来たときは、その節があるタブを開く
+  var el = h && document.getElementById(h);
+  var pane = el && el.closest('.tabpane');
+  if (pane) { showMainTab(pane.id.replace('tab-', '')); el.scrollIntoView(); }
+})();
 """
 
 
@@ -231,12 +281,43 @@ def _table(headers: list[str], rows: list[list[str]], num_cols: set[int] = froze
 
 
 def _badge(level: str, label: str) -> str:
-    icon = {"good": "✓", "warning": "!", "serious": "!", "critical": "✗"}.get(level, "")
+    icon = {"good": "✓", "warning": "!", "serious": "!", "critical": "✗", "info": "i"}.get(level, "")
     return f'<span class="badge {level}">{icon} {_e(label)}</span>'
 
 
-def _tile(label: str, value: str, sub: str = "") -> str:
-    return f'<div class="tile"><div class="label">{_e(label)}</div><div class="value">{_e(value)}</div>' \
+def _signed(x: float | None, digits: int = 0) -> str:
+    """符号つきの割合を、プラスは緑・マイナスは赤で表示する。"""
+    if x is None:
+        return '<span class="muted">―</span>'
+    cls = "pos" if x > 0 else ("neg" if x < 0 else "muted")
+    return f'<span class="{cls}">{x:+.{digits}%}</span>'
+
+
+def _tier_label(tier: str, side: str | None, excluded: str | None) -> str:
+    """区分の表示。売り方向の候補は『警戒』(下がる見込み)として、本命・監視と色を分ける。"""
+    if side == "caution" or (excluded or "").startswith("売り方向"):
+        return '<span class="tier caution">警戒</span>'
+    return '<span class="tier pick">本命</span>' if tier == "本命" else '<span class="tier watch">監視</span>'
+
+
+def _score_cell(confidence: float, stars: int, caution: bool, top: float) -> str:
+    """自信度:棒の長さは『★4の下限』を満点とした割合。数字は見込める上昇幅(%)。"""
+    width = max(2, min(100, round(100 * confidence / top))) if top else 2
+    return (f'<span class="scorebar{" caution" if caution else ""}"><i style="width:{width}%"></i></span>'
+            f'<span class="score">{confidence:.1%}</span> <span class="stars">{"★" * stars}</span>')
+
+
+_DIAG_LEVEL = {"早耳の先回り": "good", "時間差あり": "info", "織り込み進行": "warning",
+               "⚠ 無視されている疑い": "critical", "未発見": "muted", "判定前(開始直後)": "info"}
+
+
+def _diag(label: str) -> str:
+    return _badge(_DIAG_LEVEL.get(label, "muted"), label)
+
+
+def _tile(label: str, value: str, sub: str = "", color: str = "") -> str:
+    style = f' style="border-left-color:{color}"' if color else ""
+    return f'<div class="tile"{style}><div class="label">{_e(label)}</div><div class="value">{_e(value)}</div>' \
            f'<div class="sub">{_e(sub)}</div></div>'
 
 
@@ -246,7 +327,14 @@ def build_dashboard(app: "App", day: date | None = None) -> Path:
     scenarios = load_scenarios(store)
     snapshots = list(store.read("ranking_snapshot"))
     last_date = max((s["date"] for s in snapshots), default=None)
-    latest = sorted((s for s in snapshots if s["date"] == last_date and not s.get("empty")), key=lambda s: s["rank"])
+    # 同じ日にレポートを作り直すと、ランキングの記録が日付ごとに重なって残る。最後に作ったものだけを使う(同じ候補は _seq が大きい方)
+    newest: dict[tuple, dict] = {}
+    for s_ in snapshots:
+        if s_["date"] == last_date and not s_.get("empty"):
+            key = (s_["scenario_id"], s_["code"])
+            if key not in newest or s_.get("_seq", 0) > newest[key].get("_seq", 0):
+                newest[key] = s_
+    latest = sorted(newest.values(), key=lambda s: s["rank"])
     cands = {(c["scenario_id"], c["code"]): c for c in store.read("candidate")}
     tracking = list(store.read("pick_tracking"))
     picks = [p for p in tracking if p.get("event") == "first_pick"]
@@ -265,13 +353,31 @@ def build_dashboard(app: "App", day: date | None = None) -> Path:
     recent = [r for r in runs if r.get("date", "") >= (day - timedelta(days=30)).isoformat()]
     executed = [r for r in recent if r.get("executed")]
     mins = sorted(r["duration_min"] for r in executed if r.get("duration_min") is not None)
+    n_pick = sum(1 for s in latest if s["tier"] == "本命")
+    n_caution = sum(1 for s in latest if (cands.get((s["scenario_id"], s["code"]), {}).get("side") == "caution"
+                                          or (s.get("excluded_reason") or "").startswith("売り方向")))
     kpis = "".join([
-        _tile("本命(最新のレポート)", str(sum(1 for s in latest if s["tier"] == "本命")), f"{last_date or 'まだありません'}"),
-        _tile("進行中・待機中のシナリオ", str(len(active)), f"上限 {app.th.max_active_scenarios} 件"),
+        _tile("本命(最新のレポート)", str(n_pick), f"{last_date or 'まだありません'}", "var(--good)"),
+        _tile("警戒(下がる見込み)", str(n_caution), "売り方向の候補。本命にはしない", "var(--critical)"),
+        _tile("進行中・待機中のシナリオ", str(len(active)), f"上限 {app.th.max_active_scenarios} 件", "var(--c-judge)"),
         _tile(f"今月の的中率(銘柄)", f"{hit / len(month_picks):.0%}" if month_picks else "―",
-              f"本命 {len(month_picks)} 件のうち動いた {hit} 件"),
-        _tile("直近30日の実行", f"{len(executed)} 日", f"作業時間の中央値 {mins[len(mins) // 2]} 分" if mins else "記録なし"),
+              f"本命 {len(month_picks)} 件のうち動いた {hit} 件", "var(--gold)"),
+        _tile("直近30日の実行", f"{len(executed)} 日", f"作業時間の中央値 {mins[len(mins) // 2]} 分" if mins else "記録なし",
+              "var(--c-system)"),
     ])
+    names_pick = "、".join(name(s["scenario_id"], s["code"]) for s in latest if s["tier"] == "本命")
+    verdict_html = (f'<div class="verdict"><b>本命 {n_pick} 銘柄</b>:{_e(names_pick)}</div>' if n_pick else
+                    '<div class="verdict none"><b>本命:該当なし</b>(無理に候補を出さないのが正常な結果)</div>')
+    t2, t3, t4 = app.th.star_thresholds
+    help_html = (f'<div class="help"><b>自信度の読み方:数字が大きいほど良い(強気)。</b><br>'
+                 f'自信度は「この材料で期待できる上昇幅(TOPIXを上回る分)」の期待値です。たとえば <b>3.5%</b> は、'
+                 f'平均して +3.5% 上回る見込み、という目安です。<br>'
+                 f'計算: 実現確度(そのシナリオどおりに進む確率) × 残り余地(想定上昇幅から、すでに上がった分を引いたもの) × 鮮度(材料が新しいほど大きい)。<br>'
+                 f'★: <span class="stars">★</span> {t2:.0%} 未満 / <span class="stars">★★</span> {t2:.0%} 以上 / '
+                 f'<span class="stars">★★★</span> {t3:.0%} 以上 / <span class="stars">★★★★</span> {t4:.0%} 以上 '
+                 f'(棒の長さは {t4:.0%} を満点にした割合)。<br>'
+                 f'<span class="tier caution">警戒</span> は「下がる」と見た候補なので、数字が大きいほど<b>下がる見込みが大きい</b>と読みます。'
+                 f'星の基準は暫定で、実績がたまったら決め直します。</div>')
 
     # ---- 本命のカード ----
     cards = []
@@ -285,14 +391,14 @@ def build_dashboard(app: "App", day: date | None = None) -> Path:
         plan = sc.check_plan
         verified = sum(1 for p in plan.values() if p.get("status") == "確認")
         cards.append(
-            f'<div class="card"><h3>{s["rank"]}位 {_e(name(s["scenario_id"], s["code"]))} '
+            f'<div class="card pick"><h3><span class="tier pick">本命</span> {s["rank"]}位 {_e(name(s["scenario_id"], s["code"]))} '
             f'<span class="stars">{"★" * s["stars"]}</span></h3><dl>'
             f'<dt>シナリオ</dt><dd>{_e(sc.statement)}({_e(sc.scenario_id)}・強さ {_e(sc.strength)})</dd>'
             f'<dt>連想の段数</dt><dd>{_e(c.get("stage"))}段目・{_e(c.get("viewpoint"))}の視点</dd>'
-            f'<dt>自信度</dt><dd>{s["confidence"]:.3f}(実現確度 {_pct(s["realization_prob"])} × 残り余地 '
+            f'<dt>自信度</dt><dd><b>{s["confidence"]:.1%}</b>(実現確度 {_pct(s["realization_prob"])} × 残り余地 '
             f'{_pct(s["remaining_room"], True)} × 鮮度 {_pct(s["freshness"])})</dd>'
             f'<dt>織り込み度</dt><dd>{_pct(s["priced_in"])}</dd>'
-            f'<dt>反応の診断</dt><dd>{_e(s["diagnosis"])}</dd>'
+            f'<dt>反応の診断</dt><dd>{_diag(s["diagnosis"])}</dd>'
             f'<dt>裏取り</dt><dd>{verified}/{len(plan)} 確認済み</dd>'
             f'<dt>崩れる条件</dt><dd>{_e(" / ".join(c.get("break_conditions", [])))}</dd>'
             f'<dt>次の材料</dt><dd>{_e(c.get("next_catalyst"))}</dd></dl></div>')
@@ -300,10 +406,15 @@ def build_dashboard(app: "App", day: date | None = None) -> Path:
         '<div class="table-wrap"><div class="empty">本命:該当なし</div></div>'
 
     # ---- ランキング ----
-    rank_rows = [[str(s["rank"]), _e(name(s["scenario_id"], s["code"])), _e(s["tier"]),
-                  f'<span class="stars">{"★" * s["stars"]}</span> {s["confidence"]:.3f}',
-                  _pct(s["realization_prob"]), _pct(s["remaining_room"], True), _pct(s["freshness"]),
-                  _pct(s["priced_in"]), _e(s["diagnosis"]), _e(s.get("excluded_reason") or "")] for s in latest]
+    rank_rows = []
+    for s in latest:
+        side = cands.get((s["scenario_id"], s["code"]), {}).get("side")
+        caution = side == "caution" or (s.get("excluded_reason") or "").startswith("売り方向")
+        rank_rows.append([str(s["rank"]), _e(name(s["scenario_id"], s["code"])),
+                          _tier_label(s["tier"], side, s.get("excluded_reason")),
+                          _score_cell(s["confidence"], s["stars"], caution, t4),
+                          _pct(s["realization_prob"]), _signed(s["remaining_room"]), _pct(s["freshness"]),
+                          _pct(s["priced_in"]), _diag(s["diagnosis"]), _e(s.get("excluded_reason") or "")])
 
     # ---- シナリオ ----
     status_level = {"進行中": "good", "待機": "warning", "休眠": "serious", "終了": "critical"}
@@ -334,7 +445,7 @@ def build_dashboard(app: "App", day: date | None = None) -> Path:
     health_rows = [[_e(r.get("company_name") or r["code"]) + f"({_e(r['code'])})", _e(r["scenario_id"]),
                     _badge(health_level.get(r["status"], ""), r["status"]
                            + (f"(前回 {r['prev_status']} から変化)" if r.get("changed") else "")),
-                    _pct(r["metrics"].get("excess"), True), _pct(r["metrics"].get("priced_in")),
+                    _signed(r["metrics"].get("excess")), _pct(r["metrics"].get("priced_in")),
                     f"{r['metrics']['volume_ratio']:.0%}" if r["metrics"].get("volume_ratio") is not None else "―",
                     _e(r["metrics"].get("followup_items")), _e(" / ".join(r.get("reasons", [])))] for r in health]
 
@@ -347,7 +458,7 @@ def build_dashboard(app: "App", day: date | None = None) -> Path:
         result = _badge("good", "動いた") if m else (_badge("critical", "動かず") if window_over else _badge("warning", "判定中"))
         hist_rows.append([_e(p["first_pick_date"]), _e(name(p["scenario_id"], p["code"])), _e(p["scenario_id"]),
                           f'{_e(p.get("stage"))}段目', result,
-                          _e(m.get("days_to_move")) if m else "―", _pct(m.get("max_excess"), True) if m else "―"])
+                          _e(m.get("days_to_move")) if m else "―", _signed(m.get("max_excess")) if m else "―"])
 
     # ---- 収集の状態 ----
     fetch_rows = []
@@ -396,23 +507,31 @@ def build_dashboard(app: "App", day: date | None = None) -> Path:
 <header><h1>連想ダッシュボード</h1>
 <span class="meta">作成 {generated} / 最新のレポート {_e(last_date or 'まだありません')}
 {f' / <a href="{_e(report_link)}">連想レポートを開く</a>' if report_link else ''}</span></header>
-<div class="main-tabs"><div class="main-tab-btn active" id="btn-dash" onclick="showMainTab('dash')">ダッシュボード</div>
-<div class="main-tab-btn" id="btn-news" onclick="showMainTab('news')">ニュース一覧({n_news})</div></div>
-<div id="tab-dash">
-<nav><a href="#summary">要約</a><a href="#picks">本命</a><a href="#ranking">ランキング</a><a href="#scenarios">シナリオ</a>
-<a href="#health">継続性チェック</a><a href="#signals">売りのサイン</a><a href="#history">本命の履歴</a><a href="#collect">収集の状態</a><a href="#runs">実行記録</a></nav>
+<div class="main-tabs">
+<div class="main-tab-btn tab-judge active" id="btn-judge" onclick="showMainTab('judge')">今日の判断<small>要点・本命・ランキング・シナリオ</small></div>
+<div class="main-tab-btn tab-check" id="btn-check" onclick="showMainTab('check')">点検と履歴<small>継続性・売りのサイン・本命の履歴</small></div>
+<div class="main-tab-btn tab-system" id="btn-system" onclick="showMainTab('system')">システム状態<small>収集・実行記録</small></div>
+<div class="main-tab-btn tab-news" id="btn-news" onclick="showMainTab('news')">ニュース一覧({n_news})</div></div>
+
+<div id="tab-judge" class="tabpane tab-judge">
+<nav><a href="#summary">要点</a><a href="#picks">本命</a><a href="#ranking">自信度ランキング</a><a href="#scenarios">シナリオ</a></nav>
 <main>
-<section id="summary"><h2>要約</h2><div class="kpis">{kpis}</div>
+<section id="summary"><h2>要点</h2>{verdict_html}<div class="kpis">{kpis}</div>
 <p class="note">的中率は改善のための目安。合否の判定は運用開始から約6か月後にまとめて行う(CONCEPT §11)。</p></section>
 <section id="picks"><h2>本命</h2>{cards_html}</section>
 <section id="ranking"><h2>自信度ランキング({_e(last_date or '―')})</h2>
-<p class="note">自信度 = 実現確度 × 残り余地 × 鮮度。上位ほど自信がある。</p>
+{help_html}
 {_table(["順位", "銘柄", "区分", "自信度", "実現確度", "残り余地", "鮮度", "織り込み", "診断", "本命にしない理由"],
         rank_rows, {0, 4, 5, 6, 7}, "この日の候補はありません" if last_date else "まだランキングがありません")}</section>
 <section id="scenarios"><h2>シナリオ</h2>
 <p class="note">終了したシナリオは45日分だけ表示する。</p>
 {_table(["番号", "シナリオ", "状態", "時間の型", "強さ", "残り(営業日)", "裏取り", "候補"], scen_rows, {5, 6},
         "まだシナリオがありません")}</section>
+</main></div>
+
+<div id="tab-check" class="tabpane tab-check" hidden>
+<nav><a href="#health">継続性チェック</a><a href="#signals">売りのサイン</a><a href="#history">本命の履歴</a></nav>
+<main>
 <section id="health"><h2>継続性チェック(選んだ銘柄の期待は、まだ続いているか)</h2>
 <p class="note">本命と進行中の候補を、毎日自動で点検した目印(価格・関心・新しい材料・悪材料の語・期間)。判断は最後に人が行う。
 状態:🟢継続 / 🟡注意 / 🔴劣化 / 🔵織り込み進行 / ⚪終了。閾値は暫定で、記録を積んで当たりを検証する。</p>
@@ -424,15 +543,20 @@ def build_dashboard(app: "App", day: date | None = None) -> Path:
 <p class="note">「動いた」:本命に挙げた日の終値から、想定期間内(最長20営業日)に TOPIX より +10% 以上上回った。</p>
 {_table(["本命にした日", "銘柄", "シナリオ", "段数", "結果", "動くまで(営業日)", "最大の超過上昇"], hist_rows, {5, 6},
         "まだ本命がありません")}</section>
+</main></div>
+
+<div id="tab-system" class="tabpane tab-system" hidden>
+<nav><a href="#collect">収集の状態</a><a href="#runs">実行記録</a></nav>
+<main>
 <section id="collect"><h2>収集の状態</h2>
 <p class="note">ニュース {_e(counts['news_item'])} 件 / 開示 {_e(counts['disclosure'])} 件 / 上場銘柄一覧 {_e(counts['universe_daily'])} 行</p>
 {_table(["収集器", "状態", "最後に成功", "最後に実行", "件数(直近)", "メッセージ"], fetch_rows, {4},
         "まだ収集していません(python -m assoc collect)")}</section>
 <section id="runs"><h2>実行記録(夜の手順)</h2>
 {_table(["日付", "実行", "手順", "所要(分)", "見送った理由"], run_rows, {3}, "まだ記録がありません")}</section>
-</main>
-</div>
-<div id="tab-news" hidden>
+</main></div>
+
+<div id="tab-news" class="tabpane tab-news" hidden>
 <section><h2>ニュース一覧(直近{NEWS_DAYS}日に取得したもの)</h2>
 <p class="note">連想モデルが自動で集めたニュースと開示の全件。見出しをクリックすると元の記事を開く(Google News は中継URLのため開けないことがある)。</p>
 <div class="newsbar"><input type="text" id="nf-q" placeholder="キーワード(スペースで AND) 例: TOB カカクコム">

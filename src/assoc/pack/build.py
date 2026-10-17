@@ -254,6 +254,7 @@ def build_pack(app: "App", day: date) -> Path:
                                                  for x in t.samples[:3]]} for t in emerging],
         "themes": theme_rows,
         "theme_rotation": theme_rotation(tr, themes),
+        "unexplained_movers": _unexplained(app, day),
         "macro_drivers": detect_macro_drivers(app.con, day, tr, names=themes),
         "recently_ended_scenarios": _recently_ended(app, day, scenarios, burst_by_theme, shocks),
         "active_scenarios": [{
@@ -335,6 +336,21 @@ def _recently_ended(app: "App", day: date, scenarios, burst_by_theme, shocks, wi
                     "former_candidates": [{"code": c["code"], "company_name": c.get("master_name") or c["company_name"]}
                                           for c in sc.candidates]})
     return out
+
+
+def _unexplained(app: "App", day: date) -> dict[str, Any]:
+    from assoc.events.unexplained import detect_unexplained_movers
+    from assoc.market.layered_prices import gap_path
+    from assoc.master.names import CompanyMaster
+    try:
+        res = detect_unexplained_movers(app.con, gap_path(app.cfg), day, app.th, CompanyMaster.from_db(app.con).names,
+                                        app.topix_code())
+    except Exception as e:      # 検出に失敗しても、パック全体は作る
+        return {"as_of": None, "items": [], "explained_count": 0, "checked": 0, "error": f"{type(e).__name__}: {e}"[:120]}
+    stocks = _theme_stock_codes()
+    for it in res["items"]:
+        it["theme_ids"] = [t for t, codes in stocks.items() if it["code"] in codes]
+    return res
 
 
 def _price_shocks(app: "App", day: date, themes: dict[str, str]):

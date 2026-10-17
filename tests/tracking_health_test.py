@@ -123,3 +123,21 @@ def test_dashboard_builds_with_site_nav_and_health_section(tmp_path):
     mirror = (existing / "モデル⑧ニュース連想.html").read_text(encoding="utf-8")   # 既存の dashboard フォルダにも置く
     assert 'class="active" href="%E3%83%A2' in mirror and "../" not in mirror.split("</div>")[0]
     assert 'id="health"' in html and "継続性チェック" in html
+
+
+def test_dashboard_is_split_into_color_coded_tabs_and_explains_confidence(tmp_path):
+    """ダッシュボードは4つのタブ(判断・点検と履歴・システム状態・ニュース一覧)に分かれ、自信度の読み方を載せる(D44)。"""
+    from assoc.app import App
+    from assoc.dashboard.build import build_dashboard
+
+    cfg = Config(raw={"paths": {"data_dir": str(tmp_path / "data")}, "prices": {"source": "yfinance_live"}})
+    html = build_dashboard(App(cfg), date(2026, 9, 30)).read_text(encoding="utf-8")
+    for tab in ("judge", "check", "system", "news"):
+        assert f'id="tab-{tab}"' in html and f'id="btn-{tab}"' in html
+    pane = lambda t: html[html.index(f'id="tab-{t}"'):]
+    assert pane("judge").index('id="summary"') < pane("judge").index('id="picks"') < pane("judge").index('id="ranking"') \
+        < pane("judge").index('id="scenarios"') < pane("judge").index('id="tab-check"')
+    assert pane("check").index('id="health"') < pane("check").index('id="signals"') < pane("check").index('id="history"') \
+        < pane("check").index('id="tab-system"')
+    assert pane("system").index('id="collect"') < pane("system").index('id="runs"') < pane("system").index('id="tab-news"')
+    assert "数字が大きいほど良い" in html

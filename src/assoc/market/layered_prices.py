@@ -206,6 +206,20 @@ def layers_from_config(cfg) -> list[Layer]:
     return layers
 
 
+def universe_codes(cfg) -> list[str]:
+    """既存の日次555銘柄(tactical)の銘柄コード。原因不明の急騰・急落の検出の対象(D44)。"""
+    import duckdb
+    section = cfg.section("prices").get("layered") or {}
+    path = Path(section["tactical"]) if section.get("tactical") else None
+    if not path or not path.exists():
+        return []
+    con = duckdb.connect()
+    try:
+        return [str(r[0]) for r in con.execute("SELECT DISTINCT code FROM read_parquet(?) ORDER BY code", [str(path)]).fetchall()]
+    finally:
+        con.close()
+
+
 def gap_path(cfg) -> Path:
     return cfg.data_dir / "prices_gap" / "prices_gap.parquet"
 
@@ -254,7 +268,8 @@ def _private_tz_cache(yf) -> None:
 # Yahoo が制限(429)をかけると、銘柄ごとの再試行と待ちで、パック作成が10分以上止まる(2026-10-17。D43)。
 # 1回のプロセスで Yahoo にかける時間の予算と、連続して空振りしたら諦める回数を決め、超えたら以降の取得をすぐ諦める。
 # 諦めても、手元の株価ファイルで計算は続く(古い銘柄は『データ無し』として扱われる)。
-YAHOO_BUDGET_SECONDS = 90.0
+DEFAULT_YAHOO_BUDGET_SECONDS = 90.0
+YAHOO_BUDGET_SECONDS = DEFAULT_YAHOO_BUDGET_SECONDS
 YAHOO_MAX_EMPTY_STREAK = 3
 _YAHOO_SPENT = 0.0
 _YAHOO_EMPTY_STREAK = 0
@@ -264,9 +279,11 @@ def yahoo_gave_up() -> bool:
     return _YAHOO_SPENT >= YAHOO_BUDGET_SECONDS or _YAHOO_EMPTY_STREAK >= YAHOO_MAX_EMPTY_STREAK
 
 
-def reset_yahoo_budget() -> None:
-    global _YAHOO_SPENT, _YAHOO_EMPTY_STREAK
+def reset_yahoo_budget(budget: float | None = None) -> None:
+    """使った時間と空振りの数をゼロに戻す。budget を渡すと、その秒数を予算にする(省略時は既定の90秒)。"""
+    global _YAHOO_SPENT, _YAHOO_EMPTY_STREAK, YAHOO_BUDGET_SECONDS
     _YAHOO_SPENT, _YAHOO_EMPTY_STREAK = 0.0, 0
+    YAHOO_BUDGET_SECONDS = DEFAULT_YAHOO_BUDGET_SECONDS if budget is None else budget
 
 
 def _download_chunk(symbols: list[str], start: date, end: date, retries: int = 2) -> pd.DataFrame:

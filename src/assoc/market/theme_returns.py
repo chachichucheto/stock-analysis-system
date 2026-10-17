@@ -36,10 +36,19 @@ def theme_codes(stocks_path: Path = STOCKS_PATH) -> list[str]:
 
 
 def fill_prices(app: "App", day: date, stocks_path: Path = STOCKS_PATH) -> dict:
-    """代表銘柄と TOPIX の株価の空白を補う(既存の株価ファイルが数日遅れでも、直近の値が取れるように)。"""
+    """代表銘柄と TOPIX、および既存の555銘柄の株価の空白を補う(既存の株価ファイルが数日遅れでも、直近の値が取れるように)。
+
+    555銘柄は、原因不明の急騰・急落の検出(events/unexplained.py。D44)の対象。数が多く Yahoo の制限に当たりやすいので、
+    代表銘柄を先に取り、そのあとで555銘柄を取る(時間の予算は240秒。尽きたら諦めて、手元の株価で続ける)。"""
     from assoc.market import layered_prices as lp
-    codes = list(dict.fromkeys(theme_codes(stocks_path) + [app.topix_code()]))
-    return lp.fill_gap(app.cfg, codes, today=day)
+    first = list(dict.fromkeys(theme_codes(stocks_path) + [app.topix_code()]))
+    rest = [c for c in lp.universe_codes(app.cfg) if c not in set(first)]
+    lp.reset_yahoo_budget(240.0)
+    try:
+        info = lp.fill_gap(app.cfg, first + rest, today=day)
+    finally:
+        lp.reset_yahoo_budget()
+    return info
 
 
 def compute(app: "App", day: date, stocks_path: Path = STOCKS_PATH) -> dict:
