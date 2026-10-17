@@ -419,19 +419,94 @@ def build_dashboard(app: "App", day: date | None = None) -> Path:
     # ---- シナリオ ----
     status_level = {"進行中": "good", "待機": "warning", "休眠": "serious", "終了": "critical"}
     order = {"進行中": 0, "待機": 1, "休眠": 2, "終了": 3}
-    scen_rows = []
+    milestones: dict[tuple[str, str], dict[str, Any]] = {}
+    for m in store.read("scenario_milestone"):
+        d = milestones.setdefault((m["scenario_id"], m["code"]), {"max_excess": 0.0})
+        d[m["kind"]] = m["event_date"]
+        d["max_excess"] = max(d["max_excess"], m.get("max_excess") or 0.0)
+    end_dates: dict[str, str] = {}
+    for st in store.read("scenario_status"):
+        if st["status"] == "終了":
+            end_dates[st["scenario_id"]] = st["date"]
+    for u in store.read("scenario_update"):
+        if u["type"] == "消滅":
+            end_dates.setdefault(u["scenario_id"], u["run_date"][:10])
+
+    def cname(sc, c) -> str:
+        return f"{c.get('master_name') or c['company_name']}({c['code']})"
+
+    def realized(sc) -> tuple[str | None, str]:
+        """顕在化した日(いちばん早く TOPIX 超過が+10%に達した候補)と、その説明。無ければ動き出しの日を返す。"""
+        reached = sorted(((milestones[(sc.scenario_id, c["code"])]["reached"], c) for c in sc.candidates
+                          if "reached" in milestones.get((sc.scenario_id, c["code"]), {})), key=lambda t: t[0])
+        if reached:
+            d, c = reached[0]
+            return d, f"{d[5:]} {cname(sc, c)}"
+        started = sorted(((milestones[(sc.scenario_id, c["code"])]["move_start"], c) for c in sc.candidates
+                          if "move_start" in milestones.get((sc.scenario_id, c["code"]), {})), key=lambda t: t[0])
+        if started:
+            d, c = started[0]
+            return None, f"動き出し {d[5:]} {cname(sc, c)}"
+        return None, "―"
+
+    def md(x) -> str:
+        return x.isoformat()[5:] if hasattr(x, "isoformat") else (x[5:] if x else "―")
+
+    scen_rows, archive_rows, archive_csv = [], [], []
     for sc in sorted(scenarios.values(), key=lambda s: (order.get(s.status, 9), s.scenario_id)):
-        if sc.status == "終了" and sc.created_date < day - timedelta(days=45):
-            continue
-        remaining = "―"
-        if sc.status == "進行中" and sc.clock_date:
-            remaining = str(sc.expected_days - business_days_between(sc.clock_date, day))
+        real_date, real_text = realized(sc)
+        end = end_dates.get(sc.scenario_id)
         plan = sc.check_plan
-        scen_rows.append([_e(sc.scenario_id), _e(sc.statement),
-                          _badge(status_level.get(sc.status, ""), sc.status + (f":{sc.end_reason}" if sc.end_reason else "")),
-                          _e(sc.time_type), _e(sc.strength), remaining,
-                          f'{sum(1 for p in plan.values() if p.get("status") == "確認")}/{len(plan)}',
-                          _e("、".join(f"{c.get('master_name') or c['company_name']}({c['code']})" for c in sc.candidates))])
+        verified = f'{sum(1 for p in plan.values() if p.get("status") == "確認")}/{len(plan)}'
+        cand_text = "、".join(cname(sc, c) for c in sc.candidates)
+        if not (sc.status == "終了" and sc.created_date < day - timedelta(days=45)):
+            remaining = "―"
+            if sc.status == "進行中" and sc.clock_date:
+                remaining = str(sc.expected_days - business_days_between(sc.clock_date, day))
+            scen_rows.append([_e(sc.scenario_id), _e(sc.statement),
+                              _badge(status_level.get(sc.status, ""), sc.status + (f":{sc.end_reason}" if sc.end_reason else "")),
+                              md(sc.created_date), _e(real_text), md(end), _e(sc.time_type), _e(sc.strength), remaining,
+                              verified, _e(cand_text)])
+        # アーカイブ(期間で切らない)
+        end_d = date.fromisoformat(end) if end else day
+        days = business_days_between(sc.created_date, end_d) if end_d >= sc.created_date else 0
+        lines = []
+        for c in sc.candidates:
+            mm = milestones.get((sc.scenario_id, c["code"]), {})
+            side = "警戒" if c.get("side") == "caution" else "買い"
+            if "reached" in mm:
+                res = f'<span class="pos">+10%到達 {md(mm["reached"])}</span>(動き出し {md(mm.get("move_start"))}、最大 {mm["max_excess"]:+.0%})'
+            elif "move_start" in mm:
+                res = f'動き出し {md(mm["move_start"])}(最大 {mm["max_excess"]:+.0%}、+10%は未到達)'
+            else:
+                res = '<span class="muted">動きなし</span>'
+            lines.append(f'<div>[{side}] {_e(cname(sc, c))}:{res}</div>')
+        er = sc.initial_expected_rise or sc.expected_rise
+        archive_rows.append([_e(sc.scenario_id), _e(sc.statement),
+                             _badge(status_level.get(sc.status, ""), sc.status + (f":{sc.end_reason}" if sc.end_reason else "")),
+                             sc.created_date.isoformat(), sc.started_date.isoformat() if sc.started_date else "―",
+                             real_date or "―", end or "―", str(days),
+                             f'{er.get("median", 0):+.0%}' if er else "―", "".join(lines) or "―"])
+        archive_csv.append({
+            "番号": sc.scenario_id, "シナリオ": sc.statement, "状態": sc.status, "終了理由": sc.end_reason or "",
+            "立てた日": sc.created_date.isoformat(), "起動日": sc.started_date.isoformat() if sc.started_date else "",
+            "顕在化日": real_date or "", "終了日": end or "", "経過営業日": days, "時間の型": sc.time_type,
+            "強さ": sc.strength, "想定上昇幅(中央)": er.get("median", "") if er else "", "終了条件": sc.end_condition,
+            "テーマ": " ".join(sc.theme_ids),
+            "候補の結果": " / ".join(
+                f'[{"警戒" if c.get("side") == "caution" else "買い"}]{cname(sc, c)}'
+                + (f' +10%到達{milestones[(sc.scenario_id, c["code"])]["reached"]}' if "reached" in milestones.get((sc.scenario_id, c["code"]), {})
+                   else (f' 動き出し{milestones[(sc.scenario_id, c["code"])]["move_start"]}' if "move_start" in milestones.get((sc.scenario_id, c["code"]), {}) else " 動きなし"))
+                for c in sc.candidates)})
+    archive_rows.sort(key=lambda r: r[3], reverse=True)
+
+    import csv
+    csv_path = app.dir("reports") / "scenario_archive.csv"
+    with csv_path.open("w", encoding="utf-8-sig", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=list(archive_csv[0].keys()) if archive_csv else ["番号"])
+        w.writeheader()
+        for r in sorted(archive_csv, key=lambda r: r["立てた日"], reverse=True):
+            w.writerow(r)
 
     # ---- 売りのサイン ----
     sig_rows = [[_e(p["date"]), _e(name(p["scenario_id"], p["code"])), _e(p["scenario_id"]),
@@ -514,7 +589,7 @@ def build_dashboard(app: "App", day: date | None = None) -> Path:
 <div class="main-tab-btn tab-news" id="btn-news" onclick="showMainTab('news')">ニュース一覧({n_news})</div></div>
 
 <div id="tab-judge" class="tabpane tab-judge">
-<nav><a href="#summary">要点</a><a href="#picks">本命</a><a href="#ranking">自信度ランキング</a><a href="#scenarios">シナリオ</a></nav>
+<nav><a href="#summary">要点</a><a href="#picks">本命</a><a href="#ranking">自信度ランキング</a><a href="#scenarios">シナリオ</a><a href="#archive">シナリオのアーカイブ</a></nav>
 <main>
 <section id="summary"><h2>要点</h2>{verdict_html}<div class="kpis">{kpis}</div>
 <p class="note">的中率は改善のための目安。合否の判定は運用開始から約6か月後にまとめて行う(CONCEPT §11)。</p></section>
@@ -524,9 +599,15 @@ def build_dashboard(app: "App", day: date | None = None) -> Path:
 {_table(["順位", "銘柄", "区分", "自信度", "実現確度", "残り余地", "鮮度", "織り込み", "診断", "本命にしない理由"],
         rank_rows, {0, 4, 5, 6, 7}, "この日の候補はありません" if last_date else "まだランキングがありません")}</section>
 <section id="scenarios"><h2>シナリオ</h2>
-<p class="note">終了したシナリオは45日分だけ表示する。</p>
-{_table(["番号", "シナリオ", "状態", "時間の型", "強さ", "残り(営業日)", "裏取り", "候補"], scen_rows, {5, 6},
-        "まだシナリオがありません")}</section>
+<p class="note">終了したシナリオは終了後45日分だけ表示する。全期間は下の「シナリオのアーカイブ」。</p>
+{_table(["番号", "シナリオ", "状態", "立てた日", "顕在化(+10%に最初に到達)", "終了日", "時間の型", "強さ", "残り(営業日)", "裏取り", "候補"],
+        scen_rows, {8, 9}, "まだシナリオがありません")}</section>
+<section id="archive"><h2>シナリオのアーカイブ(全期間・{len(archive_rows)} 件)</h2>
+<p class="note">上の表は終了後45日で消えるが、ここには全シナリオを残す。<b>顕在化</b>=候補のTOPIX超過が初めて+10%に達した日(警戒の候補は、下がった幅で数える)。
+動き出し=+5%に達した日。起点はシナリオを立てた日の終値。毎晩の翌日処理で記録する(記録は消えない)。
+<a href="scenario_archive.csv">CSVでダウンロード(Excelで開ける)</a></p>
+{_table(["番号", "シナリオ", "状態", "立てた日", "起動日", "顕在化日", "終了日", "経過(営業日)", "想定上昇幅(中央)", "候補ごとの結果"],
+        archive_rows, {7, 8}, "まだシナリオがありません")}</section>
 </main></div>
 
 <div id="tab-check" class="tabpane tab-check" hidden>

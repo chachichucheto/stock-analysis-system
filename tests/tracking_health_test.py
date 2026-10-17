@@ -141,3 +141,6 @@ def test_dashboard_is_split_into_color_coded_tabs_and_explains_confidence(tmp_pa
         < pane("check").index('id="tab-system"')
     assert pane("system").index('id="collect"') < pane("system").index('id="runs"') < pane("system").index('id="tab-news"')
     assert "数字が大きいほど良い" in html
+    # シナリオは立てた日・顕在化・終了日を表に出し、45日で消えない全期間のアーカイブ(とCSV)を持つ(D45)
+    assert 'id="archive"' in html and "顕在化" in html and "scenario_archive.csv" in html
+    assert (tmp_path / "data" / "reports" / "scenario_archive.csv").exists()

@@ -30,6 +30,8 @@ class MovedResult:
     """first_pick_date から動き出した日までの営業日数。"""
     max_excess: float
     """期間内で観測された TOPIX 超過の最大値。"""
+    reached_at: date | None = None
+    """TOPIX 超過が初めて moved_excess に達した日(顕在化した日。D45)。"""
 
 
 def check_moved(
@@ -38,6 +40,7 @@ def check_moved(
     first_pick_date: date,
     expected_days: int,
     thresholds: Thresholds,
+    direction: int = 1,
 ) -> MovedResult:
     horizon_days = min(expected_days, thresholds.moved_max_days)
     end_date = add_business_days(first_pick_date, horizon_days)
@@ -51,14 +54,19 @@ def check_moved(
     max_excess = 0.0
     moved = False
     moved_at: date | None = None
+    reached_at: date | None = None
     for d in candidate_dates:
-        excess = excess_return(prices, topix, start, d)
+        # direction=-1 は売り方向(警戒)の候補:TOPIX より下がった幅を『超過』として数える
+        excess = direction * excess_return(prices, topix, start, d)
         if excess > max_excess:
             max_excess = excess
         if moved_at is None and excess >= thresholds.move_start_excess:
             moved_at = d
         if excess >= thresholds.moved_excess:
             moved = True
+            if reached_at is None:
+                reached_at = d
 
     days_to_move = business_days_between(first_pick_date, moved_at) if moved_at is not None else None
-    return MovedResult(moved=moved, moved_at=moved_at, days_to_move=days_to_move, max_excess=max_excess)
+    return MovedResult(moved=moved, moved_at=moved_at, days_to_move=days_to_move, max_excess=max_excess,
+                       reached_at=reached_at)

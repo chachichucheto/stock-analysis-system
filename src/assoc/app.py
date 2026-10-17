@@ -295,7 +295,41 @@ class App:
                                                     "event": "sell_signal", "signals": sig, "date": day.isoformat()})
                 counts["sell_signal"] += 1
         counts["health"] = self._record_health(day, evals, load_scenarios(self.store), loader, topix, picks)
+        counts["milestones"] = self.record_milestones(day, loader, topix, load_scenarios(self.store))
         return counts
+
+    def record_milestones(self, day: date, loader, topix, scenarios) -> int:
+        """シナリオの候補ごとに、『動き出した日』『顕在化した日(TOPIX超過が+10%に達した日)』を記録する(D45)。
+
+        従来の『動いた』は本命に挙げた銘柄だけだった。監視・警戒の候補や、本命にならなかったシナリオも、
+        何日にどの銘柄が動いたかを残す(あとで連想の精度を振り返るため)。起点はシナリオを立てた日(起動日)の終値。
+        売り方向(caution)の候補は、下がった幅で数える。同じ記録は二度と書かない。"""
+        done = {(m["scenario_id"], m["code"], m["kind"]) for m in self.store.read("scenario_milestone")}
+        n = 0
+        for sid, sc in scenarios.items():
+            base = sc.started_date or sc.created_date
+            if base >= day or sc.status == "休眠":
+                continue
+            for c in sc.candidates:
+                code = c["code"]
+                if (sid, code, "reached") in done:
+                    continue
+                prices = loader.get(code)
+                if prices.empty or topix.empty:
+                    continue
+                direction = -1 if c.get("side") == "caution" else 1
+                try:
+                    m = check_moved(prices, topix, base, sc.expected_days, self.th, direction)
+                except (ValueError, KeyError, IndexError, ZeroDivisionError):
+                    continue
+                for kind, at in (("move_start", m.moved_at), ("reached", m.reached_at)):
+                    if at is not None and (sid, code, kind) not in done:
+                        self.store.append("scenario_milestone", {
+                            "scenario_id": sid, "code": code, "kind": kind, "event_date": at.isoformat(),
+                            "side": c.get("side", "long"), "max_excess": m.max_excess, "date": day.isoformat()})
+                        done.add((sid, code, kind))
+                        n += 1
+        return n
 
     def _record_health(self, day: date, evals, scenarios, loader, topix, picks) -> int:
         """継続性チェック:本命・進行中の候補の「期待の健康状態」を毎日記録する(追記のみ。tracking/health.py)。"""

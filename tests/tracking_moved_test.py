@@ -87,3 +87,21 @@ def test_rise_on_pick_day_itself_is_not_counted():
 
     assert result.moved is False
     assert result.max_excess == pytest.approx(117 / 115 - 1)
+
+
+def test_reached_at_is_the_day_excess_first_hits_the_moved_threshold():
+    """顕在化した日(+10%に初めて達した日)を返す(動き出した日=+5%とは別。D45)。"""
+    days = business_days(date(2026, 9, 28), 6)
+    stock = make_price_frame(days, [100, 100, 103, 106, 111, 111])
+    topix = make_price_frame(days, [200] * 6)
+    result = check_moved(stock, topix, days[1], expected_days=10, thresholds=THRESHOLDS)
+    assert result.moved_at == days[3] and result.reached_at == days[4]
+
+
+def test_direction_minus_one_counts_a_fall_for_caution_candidates():
+    days = business_days(date(2026, 9, 28), 6)
+    stock = make_price_frame(days, [100, 100, 97, 94, 89, 89])      # 下落
+    topix = make_price_frame(days, [200] * 6)
+    up = check_moved(stock, topix, days[1], expected_days=10, thresholds=THRESHOLDS)
+    down = check_moved(stock, topix, days[1], expected_days=10, thresholds=THRESHOLDS, direction=-1)
+    assert up.moved is False and down.moved is True and down.reached_at == days[4]
