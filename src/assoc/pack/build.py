@@ -31,7 +31,7 @@ def _attention_history(app: "App", day: date) -> dict[str, list[float]]:
     since = (day - timedelta(days=app.th.gate_lookback_days)).isoformat()
     hist: dict[str, list[float]] = {"media_count": [], "gdelt": [], "wiki": [], "growth": []}
     for r in app.store.read("event_gate"):
-        if r.get("event_id", "").startswith(("burst-", "shock-")):   # 件数急増・株価急変の記録は、1件ごとの注目度の分布に混ぜない(D37・D40)
+        if r.get("event_id", "").startswith(("burst-", "shock-", "struct-")):   # 件数急増・株価急変・構造変化の記録は、1件ごとの注目度の分布に混ぜない(D37・D40)
             continue
         if since <= r.get("date", "") < day.isoformat():
             a = r.get("attention", {})
@@ -172,6 +172,12 @@ def build_pack(app: "App", day: date) -> Path:
     shocks = _price_shocks(app, day, themes)
     for sh in shocks:
         pack_events.append(_shock_event(app, day, sh, stock_codes.get(sh.shock_id, [])))
+    # 産業の力関係を変える新しい報道(媒体数が少なくても通す。D46)
+    from assoc.events.structural import detect_structural
+    seen_struct = {k for r in app.store.read("event_gate") if r.get("event_id", "").startswith("struct-")
+                   and r.get("date") != day.isoformat() for k in r.get("story_keys", [])}
+    for hit in detect_structural(app.con, day, seen_keys=seen_struct):
+        pack_events.append(_structural_event(app, day, hit, stock_codes.get(hit.theme_id, [])))
     # 辞書に無い話題も拾う:その日に急に増えた語(D39)
     emerging = detect_emerging_terms(app.con, day, app.th, matcher=relevance)
 
@@ -384,6 +390,24 @@ def _shock_event(app: "App", day: date, sh, codes: list[str]) -> dict[str, Any]:
             "forced_in": True, "attention_high": True, "price_shock": True, "theme_id": sh.shock_id if sh.kind == "theme" else None,
             "price_metrics": sh.metrics,
             "sample_headlines": [{"title": i["title"], "media": i["media"], "url": i["url"]} for i in sh.samples]}
+
+
+def _structural_event(app: "App", day: date, hit, codes: list[str]) -> dict[str, Any]:
+    """構造変化の見出しを1つのイベントにして、足切りの枠外(forced_in)で通す。記録(event_gate)にも残す(D46)。"""
+    eid = f"struct-{hit.group_id}-{day.isoformat()}"
+    title = f"【構造変化・{hit.theme_id}】{hit.label}({len(hit.samples)}件の見出し)"
+    reason = "産業の力関係を変える報道(辞書の語の組み合わせ。別枠で通過)"
+    app.store.append("event_gate", {"event_id": eid, "date": day.isoformat(), "passed": True, "reason": reason,
+                                    "forced_in": True, "novelty_hash": f"struct:{hit.group_id}:{day.isoformat()}",
+                                    "title": title, "attention_high": True, "story_keys": hit.keys,
+                                    "attention": {"media_count": float(len(hit.samples)), "gdelt": 0.0, "wiki": 0.0,
+                                                  "score": 1.0, "growth": 0.0, "growth_percentile": 1.0}})
+    return {"event_id": eid, "title": title, "urls": [i["url"] for i in hit.samples],
+            "media": sorted({i["media"] for i in hit.samples} - {""})[:12],
+            "first_observed_at": hit.samples[0]["observed_at"] if hit.samples else day.isoformat(),
+            "media_count": len(hit.samples), "disclosure_type": "", "codes": codes, "gate_reason": reason,
+            "forced_in": True, "attention_high": True, "structural": True, "theme_id": hit.theme_id,
+            "sample_headlines": [{"title": i["title"], "media": i["media"], "url": i["url"]} for i in hit.samples]}
 
 
 def _burst_event(app: "App", day: date, b: ThemeBurst, name: str, codes: list[str]) -> dict[str, Any]:

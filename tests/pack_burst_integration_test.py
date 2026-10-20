@@ -160,3 +160,27 @@ def test_should_write_rules():
     assert should_write("横ばい", {"temperature": "上昇中", "source": "llm"}) is False
     assert should_write("横ばい", None) is False
     assert should_write("横ばい", {"temperature": "上昇中", "source": "auto"}) is True
+
+
+# --- 構造変化の見出しは、媒体数1でも通る(D46) ---------------------------------------------------------------------
+
+def test_structural_headline_passes_with_single_source(app):
+    from assoc.events.structural import detect_structural
+    _news(app, "インテル、推論向けGPU「Dシリーズ」でエヌビディアに対抗 最大480GBメモリ搭載")
+    _news(app, "サムスンとTSMCのHBM提携が半導体株の反発を誘発")
+    _news(app, "焼肉きんぐ、新店オープン")
+    groups = {"S01": {"theme_id": "P01", "label": "x", "each_of": [["HBM", "ベースダイ"], ["TSMC", "エヌビディア"]]},
+              "S02": {"theme_id": "P01", "label": "y", "each_of": [["推論"], ["GPU"], ["エヌビディア"]]}}
+    hits = {h.group_id: h for h in detect_structural(app.con, DAY, groups)}
+    assert set(hits) == {"S01", "S02"}
+    assert "HBM" in hits["S01"].samples[0]["title"]
+    # 一度出した見出しは、次回は出さない
+    again = detect_structural(app.con, DAY, groups, seen_keys=set(hits["S01"].keys) | set(hits["S02"].keys))
+    assert again == []
+
+
+def test_structural_requires_all_groups(app):
+    from assoc.events.structural import detect_structural
+    _news(app, "HBM4Eの冷却技術が激突 SEDEXが開幕")
+    groups = {"S01": {"theme_id": "P01", "label": "x", "each_of": [["HBM"], ["TSMC", "エヌビディア"]]}}
+    assert detect_structural(app.con, DAY, groups) == []
