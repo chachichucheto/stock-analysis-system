@@ -154,7 +154,7 @@ def build_pack(app: "App", day: date) -> Path:
             wrapped = [u for u, _s, _m in rows if "news.google.com" in u]
             media = sorted({media_of(s or "", m or "") for _u, s, m in rows} - {""})
             urls = direct + wrapped
-            pack_events.append({"event_id": ev.event_id, "title": ev.title, "urls": urls[:10], "media": media[:12],
+            pack_events.append({"event_id": ev.event_id, "title": ev.title, "urls": urls[:5], "media": media[:8],
                                 "first_observed_at": to_iso(ev.first_observed_at), "media_count": ev.media_count,
                                 "disclosure_type": ev.disclosure_type, "codes": ev.codes,
                                 "gate_reason": r.reason, "forced_in": r.forced_in,
@@ -180,6 +180,9 @@ def build_pack(app: "App", day: date) -> Path:
         pack_events.append(_structural_event(app, day, hit, stock_codes.get(hit.theme_id, [])))
     # 辞書に無い話題も拾う:その日に急に増えた語(D39)
     emerging = detect_emerging_terms(app.con, day, app.th, matcher=relevance)
+    # 見出し一覧:足切りを通らなかったものも含め、重複をまとめて1行ずつ(強いニュースの選別は LLM が行う。D47)
+    from assoc.events.digest import build_digest
+    digest = build_digest(events, [e["title"] for e in pack_events])
 
     cards = latest_by(app.store, "premise_card", "theme_id")
     temps = latest_by(app.store, "theme_temperature", "theme_id")
@@ -258,6 +261,7 @@ def build_pack(app: "App", day: date) -> Path:
                             "ratio": t.ratio, "covered_by": t.covered_by,
                             "sample_headlines": [{"title": x["title"], "media": x["media"], "url": x["url"]}
                                                  for x in t.samples[:3]]} for t in emerging],
+        "headline_digest": digest,
         "themes": theme_rows,
         "theme_rotation": theme_rotation(tr, themes),
         "unexplained_movers": _unexplained(app, day),
