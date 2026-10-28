@@ -85,7 +85,7 @@ a { color: var(--accent); }
 #news-table td.t { white-space: nowrap; color: var(--text-muted); }
 
 /* ---- D44:タブ分け・色づけ ---- */
-:root { --c-judge: #4c9aff; --c-check: #f5a524; --c-system: #2fc487; --c-news: #b794f6;
+:root { --c-judge: #4c9aff; --c-check: #f5a524; --c-system: #2fc487; --c-news: #b794f6; --c-picked: #ec6f9b;
   --gold: #fbbf24; --pos: #34d399; --neg: #f87171; --info: #60a5fa; }
 .main-tabs { gap: 8px; margin: 8px 0 18px; border-bottom: 2px solid var(--border-strong); }
 .main-tab-btn { padding: 10px 22px; font-size: 15px; font-weight: 600; border-width: 1px; border-bottom: none;
@@ -94,7 +94,7 @@ a { color: var(--accent); }
 .main-tab-btn.active { background: var(--tc); color: #0b0b0b; border-color: var(--tc); }
 .main-tab-btn small { font-weight: 400; font-size: 11px; opacity: .85; margin-left: 6px; }
 .tab-judge { --tc: var(--c-judge); } .tab-check { --tc: var(--c-check); }
-.tab-system { --tc: var(--c-system); } .tab-news { --tc: var(--c-news); }
+.tab-system { --tc: var(--c-system); } .tab-news { --tc: var(--c-news); } .tab-picked { --tc: var(--c-picked); }
 .tabpane section h2 { border-left: 6px solid var(--tc); padding-left: 10px; font-size: 17px; }
 .tabpane nav a { border-color: var(--tc); }
 .tabpane nav a:hover { background: var(--tc); color: #0b0b0b; }
@@ -240,7 +240,7 @@ NEWS_JS = """
   $('nf-reset').onclick = function () { $('nf-q').value = ''; $('nf-kind').value = ''; $('nf-media').value = ''; $('nf-day').value = ''; apply(); };
   apply();
 })();
-var TABS = ['judge', 'check', 'system', 'news'];
+var TABS = ['judge', 'picked', 'check', 'system', 'news'];
 function showMainTab(name) {
   if (TABS.indexOf(name) < 0) name = 'judge';
   TABS.forEach(function (t) {
@@ -259,6 +259,47 @@ function showMainTab(name) {
   if (pane) { showMainTab(pane.id.replace('tab-', '')); el.scrollIntoView(); }
 })();
 """
+
+
+def _picked_tab(app: "App", cands: dict) -> str:
+    """機械が拾った材料(最新の入力パック):狙い撃ち・銘柄ごとの材料台帳・連想先。夜の判断が採用したかを並べる(D50)。"""
+    import json
+    files = sorted(app.dir("packs").glob("pack_*.json"))
+    if not files:
+        return '<main><section><h2>拾った材料</h2><div class="table-wrap"><div class="empty">まだ入力パックがありません</div></div></section></main>'
+    pack = json.loads(files[-1].read_text(encoding="utf-8"))
+    used: dict[str, set[str]] = {}
+    for (sid, code) in cands:
+        used.setdefault(str(code), set()).add(sid)
+
+    def adopted(code: str) -> str:
+        sids = sorted(used.get(str(code), ()))
+        return _badge("good", "候補: " + "・".join(sids)) if sids else _badge("warning", "候補にしていない")
+
+    def rel(items: list[dict]) -> str:
+        out = []
+        for r in items or []:
+            mats = "、".join(f"{m['type']}" for m in r.get("recent_materials", []))
+            out.append(f"<div>{_e(r['company_name'])}({_e(r['code'])}) <span class=\"note\">{_e(' / '.join(r.get('via', [])))}"
+                       f"{(' / 自身の材料: ' + _e(mats)) if mats else ''}</span></div>")
+        return "".join(out) or "―"
+
+    sn = [e for e in pack.get("events", []) if e.get("sniper")]
+    sn_rows = [[_e(e["codes"][0] if e.get("codes") else ""), _e(e.get("sniper_type", "")), _e(e["title"][:70]),
+                _e(e.get("media_count", "")), adopted(e["codes"][0]) if e.get("codes") else "―", rel(e.get("related"))] for e in sn]
+    led = pack.get("stock_ledger", [])
+    led_rows = [[f"{_e(x['company_name'])}({_e(x['code'])})", _e(x["reason"]),
+                 "".join(f"<div>{_e(m['type'])} {len(m['days'])}日 {_e(m['headline'][:40])}</div>" for m in x["materials"]),
+                 adopted(x["code"]), rel(x.get("related"))] for x in led]
+    return (f'<nav><a href="#sniper">狙い撃ち</a><a href="#ledger">材料台帳</a></nav><main>'
+            f'<p class="note">入力パック {_e(pack.get("date"))} の内容。機械が拾った材料と、夜の判断が候補にしたかを並べる。'
+            f'「候補にしていない」は、見送りが正しい場合もある(弱い材料・すでに株価に出た材料など)。</p>'
+            f'<section id="sniper"><h2>狙い撃ち({len(sn)}件)</h2>'
+            + _table(["銘柄", "種類", "代表の見出し", "媒体数", "判断", "連想先(経路)"], sn_rows, {3}, "狙い撃ちの材料はありません")
+            + f'</section><section id="ledger"><h2>銘柄ごとの材料台帳({len(led)}件)</h2>'
+            f'<p class="note">直近14日に、種類の違う材料が日をまたいで重なった(または同じ材料が続く)銘柄。</p>'
+            + _table(["銘柄", "理由", "材料", "判断", "連想先(経路)"], led_rows, set(), "台帳に載る銘柄はありません")
+            + '</section></main>')
 
 
 def _e(x: Any) -> str:
@@ -572,6 +613,7 @@ def build_dashboard(app: "App", day: date | None = None) -> Path:
     generated = utcnow().astimezone(JST).strftime("%Y-%m-%d %H:%M")
 
     news_json, n_news = _news_payload(app)
+    picked_html = _picked_tab(app, cands)
 
     html = f"""<!doctype html>
 <html lang="ja"><head><meta charset="utf-8">
@@ -584,6 +626,7 @@ def build_dashboard(app: "App", day: date | None = None) -> Path:
 {f' / <a href="{_e(report_link)}">連想レポートを開く</a>' if report_link else ''}</span></header>
 <div class="main-tabs">
 <div class="main-tab-btn tab-judge active" id="btn-judge" onclick="showMainTab('judge')">今日の判断<small>要点・本命・ランキング・シナリオ</small></div>
+<div class="main-tab-btn tab-picked" id="btn-picked" onclick="showMainTab('picked')">拾った材料<small>狙い撃ち・材料台帳・連想先</small></div>
 <div class="main-tab-btn tab-check" id="btn-check" onclick="showMainTab('check')">点検と履歴<small>継続性・売りのサイン・本命の履歴</small></div>
 <div class="main-tab-btn tab-system" id="btn-system" onclick="showMainTab('system')">システム状態<small>収集・実行記録</small></div>
 <div class="main-tab-btn tab-news" id="btn-news" onclick="showMainTab('news')">ニュース一覧({n_news})</div></div>
@@ -609,6 +652,9 @@ def build_dashboard(app: "App", day: date | None = None) -> Path:
 {_table(["番号", "シナリオ", "状態", "立てた日", "起動日", "顕在化日", "終了日", "経過(営業日)", "想定上昇幅(中央)", "候補ごとの結果"],
         archive_rows, {7, 8}, "まだシナリオがありません")}</section>
 </main></div>
+
+<div id="tab-picked" class="tabpane tab-picked" hidden>
+{picked_html}</div>
 
 <div id="tab-check" class="tabpane tab-check" hidden>
 <nav><a href="#health">継続性チェック</a><a href="#signals">売りのサイン</a><a href="#history">本命の履歴</a></nav>
