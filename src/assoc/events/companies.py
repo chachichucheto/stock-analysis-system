@@ -55,9 +55,11 @@ class Mention:
 class CompanyIndex:
     """見出し中の社名を探す。長い社名を先に当て、英字の社名は前後が英数字でないときだけ当てる。"""
 
-    def __init__(self, key_codes: dict[str, set[str]], group_keys: set[str]):
+    def __init__(self, key_codes: dict[str, set[str]], group_keys: set[str],
+                 primary: dict[str, set[str]] | None = None):
         self._codes = key_codes
         self._groups = group_keys
+        self._primary = primary or {}      # ブランド名(gmo)の中心の1社(別名辞書で指定。GMO→9449)
         self._lens = sorted({len(k) for k in key_codes}, reverse=True)
 
     @staticmethod
@@ -104,13 +106,16 @@ class CompanyIndex:
         for b in groups:
             key_codes.setdefault(b, set()).update(brands[b])
         # 別名辞書(ユニクロ→9983 など)。短い別名は一般語に当たるので長さの下限を守る
+        primary: dict[str, set[str]] = {}
         for alias, code in (aliases or {}).items():
             a = normalize(alias)
             if len(a) >= MIN_KEY_LEN and a not in stop and code in master.names:
                 key_codes.setdefault(a, set()).add(code)
+                if a in groups:
+                    primary.setdefault(a, set()).add(code)
         for w in stop:
             key_codes.pop(w, None)
-        return cls(key_codes, groups)
+        return cls(key_codes, groups, primary)
 
     @classmethod
     def from_db(cls, con, aliases_file: Path | None = None, stop_file: Path | None = None) -> "CompanyIndex":
@@ -140,6 +145,10 @@ class CompanyIndex:
                     seen.add(k)
                     out.append(Mention(key=k, codes=tuple(sorted(self._codes[k])), group=k in self._groups))
         return out
+
+    def subject_codes(self, key: str) -> tuple[str, ...]:
+        """その社名の銘柄コード。ブランド名だけ(GMO)なら、別名辞書で指定した中心の1社(9449)。指定が無ければグループ全社。"""
+        return tuple(sorted(self._primary.get(key) or self._codes.get(key, ())))
 
     def brand_of(self, key: str) -> str | None:
         """社名の先頭がブランド名(gmo など)ならそのブランド名。"""

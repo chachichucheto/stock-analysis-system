@@ -13,7 +13,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
 
-from assoc.events.companies import CompanyIndex, same_topic, story_keys, topic_runs
+from assoc.events.companies import CompanyIndex, normalize, same_topic, story_keys, topic_runs
 from assoc.events.models import Event
 from assoc.ingest.common import normalize_text, sha256_hex
 from assoc.timeutil import JST, jst_date, to_iso, utcnow
@@ -215,6 +215,18 @@ def cluster(items: list[ClusterInput], *, threshold: float = 0.5,
     for n, c in enumerate(clusters):
         # 代表見出しは、最も長いタイトル(要点が詳しいことが多いため)。
         rep = max(c.members, key=lambda m: len(m.title))
+        if company_index is not None and len(c.members) > 1:
+            # まとめた話の代表見出しは、最も多くの記事に出る社名を含むもののうち最も長いもの(末尾の別会社の話題に引きずられない)
+            per = [(m, story_keys(company_index, m.title)) for m in c.members]
+            freq: dict[str, int] = {}
+            for _m, ks in per:
+                for k in ks:
+                    freq[k] = freq.get(k, 0) + 1
+            if freq:
+                top = max(freq, key=lambda k: (freq[k], len(k)))
+                # 社名が見出しの前のほうにある(その会社が主役の)ものを優先し、同じなら長いもの
+                rep = max((m for m, ks in per if top in ks),
+                          key=lambda m: (-max(normalize(m.title).find(top), 0) // 8, len(m.title)))
         media_count = len({m.source for m in c.members})
         codes = sorted({m.code for m in c.members if m.code})
         disclosure_kinds = [m for m in c.members if m.kind == "disclosure"]

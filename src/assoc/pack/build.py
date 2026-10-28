@@ -164,6 +164,18 @@ def build_pack(app: "App", day: date) -> Path:
                                 "gate_reason": r.reason, "forced_in": r.forced_in,
                                 "attention_high": attention_high})
 
+    # 報道の量は小さくても、特定の上場企業の株価が動きやすい材料(自社の事故、業績修正、TOBなど)を、足切りの枠外で通す(D49)
+    from assoc.events.sniper import REPEAT_DAYS, detect_sniper, liquid_codes, sniper_key
+    since = (day - timedelta(days=REPEAT_DAYS)).isoformat()
+    recent_snipe = {r["sniper_key"] for r in app.store.read("event_gate")
+                    if r.get("sniper_key") and r.get("date") != day.isoformat() and r.get("date") in judged
+                    and r.get("date", "") >= since}
+    snipes = detect_sniper(events, company_index, liquid=liquid_codes(app.cfg, app.th.min_turnover_yen),
+                           skip_event_ids={r.event_id for r in results if r.passed}, recent_keys=recent_snipe)
+    master_names = CompanyMaster.from_db(app.con).names
+    for h in snipes:
+        pack_events.append(_sniper_event(app, day, h, by_id[h.event_id], master_names))
+
     themes = _load_themes()
     # テーマ別の見出し件数の急増(足切りは1件ごとの判定なので、別々の会社の話が連日出る話題を取りこぼす。D37)。
     # 急増しているテーマは、代表の見出しをまとめて1つのイベントとして、足切りの枠外で通す。
@@ -398,6 +410,41 @@ def _shock_event(app: "App", day: date, sh, codes: list[str]) -> dict[str, Any]:
             "forced_in": True, "attention_high": True, "price_shock": True, "theme_id": sh.shock_id if sh.kind == "theme" else None,
             "price_metrics": sh.metrics,
             "sample_headlines": [{"title": i["title"], "media": i["media"], "url": i["url"]} for i in sh.samples]}
+
+
+def _sniper_event(app: "App", day: date, h, ev, names: dict[str, str]) -> dict[str, Any]:
+    """個別銘柄を狙い撃つ材料を1つのイベントにして、足切りの枠外(forced_in)で通す。記録(event_gate)にも残す(D49)。"""
+    from assoc.events.sniper import classify, sniper_key
+    rows = app.con.execute(
+        "SELECT url, source, summary, title FROM news_item WHERE news_id IN (SELECT unnest(?)) "
+        "UNION ALL SELECT url, source, '', title FROM disclosure WHERE disclosure_id IN (SELECT unnest(?))",
+        [ev.news_ids, ev.disclosure_ids]).fetchall()
+    # 話をまとめたイベントの代表見出しは最も長い見出しで、材料と関係の薄いことがある。材料の種類に当たる見出しを先に出す
+    from assoc.events.companies import normalize
+
+    def _rank(r):
+        t = r[3] or ""
+        c = classify(t)
+        pos = normalize(t).find(h.company_key) if h.company_key else 0
+        return (not (c and c[0] == h.type), pos < 0, max(pos, 0) // 8, -len(t))   # 材料の種類に当たる→主役の社名が前にある→長い
+    heads = sorted(rows, key=_rank)
+    top = (heads[0][3] if heads else "") or ev.title
+    eid = f"snipe-{h.code}-{h.type}-{day.isoformat()}"
+    reason = "個別銘柄の材料(" + "、".join(h.reasons) + ")"
+    title = f"【狙い撃ち・{h.type}】{names.get(h.code, h.code)}: {top}"
+    app.store.append("event_gate", {"event_id": eid, "date": day.isoformat(), "passed": True, "reason": reason,
+                                    "forced_in": True, "novelty_hash": f"snipe:{sniper_key(h)}:{day.isoformat()}",
+                                    "title": title, "attention_high": True, "sniper_key": sniper_key(h),
+                                    "attention": {"media_count": float(ev.media_count), "gdelt": 0.0, "wiki": 0.0,
+                                                  "score": float(h.score), "growth": 0.0, "growth_percentile": 0.0}})
+    urls = [r[0] for r in heads if "news.google.com" not in r[0]] + [r[0] for r in heads if "news.google.com" in r[0]]
+    media = sorted({media_of(r[1] or "", r[2] or "") for r in rows} - {""})
+    return {"event_id": eid, "title": title, "urls": urls[:5], "media": media[:8],
+            "first_observed_at": to_iso(ev.first_observed_at), "media_count": ev.media_count,
+            "disclosure_type": ev.disclosure_type, "codes": [h.code], "mentioned_codes": h.mentioned_codes,
+            "gate_reason": reason, "forced_in": True, "attention_high": True, "sniper": True, "sniper_type": h.type,
+            "sample_headlines": [{"title": r[3], "media": media_of(r[1] or "", r[2] or ""), "url": r[0]}
+                                 for r in heads[:5]]}
 
 
 def _structural_event(app: "App", day: date, hit, codes: list[str]) -> dict[str, Any]:
