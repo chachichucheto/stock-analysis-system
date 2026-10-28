@@ -103,7 +103,11 @@ def build_pack(app: "App", day: date) -> Path:
     window_end = min(now, day_start + timedelta(days=1)) if day <= app.today() else day_start + timedelta(days=1)
     judged = _judged_dates(app)
     window_start = _previous_pack_time(packs, day, judged) or day_start
-    events = build_events_between(app.con, window_start, window_end)
+    # 同じ会社の話は、言い回しが割れていても1つのイベントにまとめる(媒体数・記事数を合算。D48)
+    from assoc.events.companies import CompanyIndex
+    company_index = CompanyIndex.from_db(app.con, REPO_ROOT / "knowledge" / "aliases.yaml",
+                                         REPO_ROOT / "knowledge" / "company_name_stop.yaml")
+    events = build_events_between(app.con, window_start, window_end, company_index=company_index)
     # 既知の事実(新規性なし)とするのは、判定まで終わった日に出たものだけ。判定されなかった日のイベントは、もう一度かける(D42)
     seen = {r["novelty_hash"] for r in app.store.read("event_gate")
             if r.get("novelty_hash") and r.get("date") != day.isoformat() and r.get("date") in judged}

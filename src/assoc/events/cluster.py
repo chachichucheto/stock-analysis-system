@@ -13,6 +13,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
 
+from assoc.events.companies import CompanyIndex, same_topic, story_keys, topic_runs
 from assoc.events.models import Event
 from assoc.ingest.common import normalize_text, sha256_hex
 from assoc.timeutil import JST, jst_date, to_iso, utcnow
@@ -85,6 +86,11 @@ class _Cluster:
         self.title_bigrams |= char_bigrams(item.title)
         self.entities |= set(item.entities)
 
+    def absorb(self, other: "_Cluster") -> None:
+        self.members.extend(other.members)
+        self.title_bigrams |= other.title_bigrams
+        self.entities |= other.entities
+
     def similarity(self, item: ClusterInput) -> float:
         title_sim = jaccard(self.title_bigrams, char_bigrams(item.title))
         entity_sim = jaccard(self.entities, set(item.entities))
@@ -99,7 +105,60 @@ def _prefix_keys(keys: set[str], postings: dict[str, list[int]]) -> list[str]:
     return sorted(keys, key=lambda k: len(postings.get(k, ())))[:need]
 
 
-def cluster(items: list[ClusterInput], *, threshold: float = 0.5) -> list[Event]:
+MAX_STORY_GROUP = 400   # 1つの社名に結びつくクラスタがこれを超えたら、総当たりの比較を打ち切る(処理時間の上限)
+
+
+def _merge_same_company(clusters: list[_Cluster], index: CompanyIndex) -> tuple[list[_Cluster], dict[int, set[str]]]:
+    """同じ会社の名前が出て、話題の語も重なるクラスタを1つにまとめる(D48)。
+
+    見出しの言い回しが割れると、1つの話が媒体数1〜2のイベントに砕ける。社名と話題が一致するものは同じ話とみなし、
+    記事と媒体を合算する。社名が同じでも話題が違えば(決算と不正アクセスなど)まとめない。"""
+    keys: list[set[str]] = []
+    topics: list[set[str]] = []
+    for c in clusters:
+        ks: set[str] = set()
+        for m in c.members:
+            ks |= story_keys(index, m.title)
+        keys.append(ks)
+        tp: set[str] = set()
+        for m in c.members:
+            tp |= topic_runs(m.title, ks)
+        topics.append(tp)
+    parent = list(range(len(clusters)))
+
+    def find(x: int) -> int:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    by_key: dict[str, list[int]] = {}
+    for i, ks in enumerate(keys):
+        for k in ks:
+            by_key.setdefault(k, []).append(i)
+    for members in by_key.values():
+        members = members[:MAX_STORY_GROUP]
+        for a in range(len(members)):
+            for b in range(a + 1, len(members)):
+                i, j = members[a], members[b]
+                if find(i) != find(j) and same_topic(topics[i], topics[j]):
+                    parent[find(j)] = find(i)
+    merged: dict[int, _Cluster] = {}
+    merged_keys: dict[int, set[str]] = {}
+    for i, c in enumerate(clusters):
+        r = find(i)
+        if r in merged:
+            merged[r].absorb(c)
+            merged_keys[r] |= keys[i]
+        else:
+            merged[r] = c
+            merged_keys[r] = set(keys[i])
+    out = list(merged.values())
+    return out, {n: merged_keys[r] for n, r in enumerate(merged)}
+
+
+def cluster(items: list[ClusterInput], *, threshold: float = 0.5,
+            company_index: CompanyIndex | None = None) -> list[Event]:
     """見出し・固有表現の類似度でイベントにまとめる(純関数)。
 
     items は同じ日にまとめて渡す想定(1日単位でのイベント化。docs/DESIGN.md §6.2)。
@@ -148,14 +207,20 @@ def cluster(items: list[ClusterInput], *, threshold: float = 0.5) -> list[Event]
             clusters.append(c)
             register(len(clusters) - 1, c, c.title_bigrams, c.entities)
 
+    story: dict[int, set[str]] = {}
+    if company_index is not None:
+        clusters, story = _merge_same_company(clusters, company_index)
+
     events = []
-    for c in clusters:
+    for n, c in enumerate(clusters):
         # 代表見出しは、最も長いタイトル(要点が詳しいことが多いため)。
         rep = max(c.members, key=lambda m: len(m.title))
         media_count = len({m.source for m in c.members})
         codes = sorted({m.code for m in c.members if m.code})
         disclosure_kinds = [m for m in c.members if m.kind == "disclosure"]
         first_observed_at = min(m.first_observed_at for m in c.members)
+        skeys = sorted(story.get(n, ()))
+        mcodes = sorted({code for k in skeys for code in company_index._codes.get(k, ())}) if skeys else []
         events.append(
             Event(
                 event_id=sha256_hex(
@@ -170,6 +235,8 @@ def cluster(items: list[ClusterInput], *, threshold: float = 0.5) -> list[Event]
                 novelty_hash=_novelty_hash(rep.title, c.entities),
                 codes=codes,
                 disclosure_ids=[m.id for m in c.members if m.kind == "disclosure"],
+                story_keys=skeys,
+                mentioned_codes=mcodes,
             )
         )
     return events
@@ -188,13 +255,16 @@ def media_of(source: str, summary: str = "") -> str:
     return source.split()[0] if source.split() else source
 
 
-def build_events_for_day(con, as_of: date, *, threshold: float = 0.5) -> list[Event]:
+def build_events_for_day(con, as_of: date, *, threshold: float = 0.5,
+                         company_index: CompanyIndex | None = None) -> list[Event]:
     """DB からその日(日本時間)の news_item・disclosure を読み、イベント化する。"""
     start = datetime.combine(as_of, time.min, tzinfo=JST)
-    return build_events_between(con, start, start + timedelta(days=1), threshold=threshold)
+    return build_events_between(con, start, start + timedelta(days=1), threshold=threshold,
+                                company_index=company_index)
 
 
-def build_events_between(con, start: datetime, end: datetime, *, threshold: float = 0.5) -> list[Event]:
+def build_events_between(con, start: datetime, end: datetime, *, threshold: float = 0.5,
+                         company_index: CompanyIndex | None = None) -> list[Event]:
     """start < 取得時刻 <= end の news_item・disclosure を読み、イベント化する。
 
     夕方の入力パックは「前回のパックを作った時刻から今回まで」を対象にする。日付で区切ると、
@@ -218,4 +288,4 @@ def build_events_between(con, start: datetime, end: datetime, *, threshold: floa
                      first_observed_at=r[3], code=r[4])
         for r in disc_rows
     ]
-    return cluster(items, threshold=threshold)
+    return cluster(items, threshold=threshold, company_index=company_index)

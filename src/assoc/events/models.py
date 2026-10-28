@@ -17,6 +17,8 @@ class Event:
     novelty_hash: str
     codes: list[str] = field(default_factory=list)  # 開示由来の銘柄コード(足切りの別枠判定に使う)
     disclosure_ids: list[str] = field(default_factory=list)
+    story_keys: list[str] = field(default_factory=list)       # 見出しに出た社名(同じ会社の話をまとめた鍵。D48)
+    mentioned_codes: list[str] = field(default_factory=list)  # 見出しに出た社名の銘柄コード(グループ名だけのときは同じブランドの全社)
 
 
 @dataclass
