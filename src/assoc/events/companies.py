@@ -105,6 +105,22 @@ class CompanyIndex:
         groups = {b for b, codes in brands.items() if len(codes) >= 2}
         for b in groups:
             key_codes.setdefault(b, set()).update(brands[b])
+        # カタカナ・漢字の名前のグループ(ソニーグループ・ソニーフィナンシャルグループ→ソニー)。ホールディングス等を外した短い名前が、
+        # 別の『…ホールディングス/グループ』の名前の先頭と一致するときだけ。『グリー』が『グリーンエナジー』に当たるような
+        # 一般語の先頭一致を避けるため、相手も持株会社型の名前に限る(取りこぼしは別名辞書で補う)
+        for short, anchor_codes in {n[: -len(t)]: codes for n, codes in full.items() for t in _HOLDING_TAILS
+                                    if n.endswith(t) and len(n) - len(t) >= MIN_KEY_LEN}.items():
+            if short in stop or short in brands or short in full:
+                continue
+            members = set(anchor_codes)
+            for n, codes in full.items():
+                if n != short and n.startswith(short) and n not in full.get(short, ()) and any(
+                        n.endswith(t) for t in _HOLDING_TAILS):
+                    members |= codes
+            if len(members) >= 2:
+                brands[short] = members
+                key_codes.setdefault(short, set()).update(members)
+        groups = {b for b, codes in brands.items() if len(codes) >= 2}
         # 別名辞書(ユニクロ→9983 など)。短い別名は一般語に当たるので長さの下限を守る
         primary: dict[str, set[str]] = {}
         for alias, code in (aliases or {}).items():

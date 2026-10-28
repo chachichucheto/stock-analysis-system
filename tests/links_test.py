@@ -30,3 +30,16 @@ def test_scenario_and_theme_and_comention_edges():
     via = {r["code"]: r["via"] for r in lm.related("4493")}
     assert "過去のシナリオSC1で並んだ" in via["4704"]
     assert any("同じテーマ(サイバー)" == v for v in via["9449"]) and any("2回一緒に出た" in v for v in via["9449"])
+
+
+def test_group_by_shared_holding_name_and_subsidiary_alias():
+    names = {"6758": "ソニーグループ", "8729": "ソニーフィナンシャルグループ", "9999": "グリーンエナジー＆カンパニー",
+             "9998": "グリーホールディングス"}
+    idx = CompanyIndex.from_master(CompanyMaster(names), {"ソニー": "6758", "ソニー生命": "8729"})
+    assert idx.codes_of("ソニー") == {"6758", "8729"}                # 持株会社どうしの名前の先頭一致はグループ
+    assert "グリー" not in idx.group_brands()                        # 一般語の先頭一致(グリーン…)は持株会社型でないのでまとめない
+    sub = idx.find("ソニー生命 契約者サイトに不正アクセス")
+    assert [(m.key, idx.subject_codes(m.key)) for m in sub] == [("ソニー生命", ("8729",))]    # 子会社名は上場の親会社に結ぶ
+    lm = L.LinkMap()
+    L.add_groups(lm, idx, names)
+    assert [r["code"] for r in lm.related("6758")] == ["8729"]
