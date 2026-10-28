@@ -150,6 +150,12 @@ class CompanyIndex:
         """その社名の銘柄コード。ブランド名だけ(GMO)なら、別名辞書で指定した中心の1社(9449)。指定が無ければグループ全社。"""
         return tuple(sorted(self._primary.get(key) or self._codes.get(key, ())))
 
+    def group_brands(self) -> list[str]:
+        return sorted(self._groups)
+
+    def codes_of(self, key: str) -> set[str]:
+        return set(self._codes.get(key, ()))
+
     def brand_of(self, key: str) -> str | None:
         """社名の先頭がブランド名(gmo など)ならそのブランド名。"""
         m = _ASCII_HEAD.match(key)

@@ -176,6 +176,17 @@ def build_pack(app: "App", day: date) -> Path:
     for h in snipes:
         pack_events.append(_sniper_event(app, day, h, by_id[h.event_id], master_names))
 
+    # 銘柄ごとの材料台帳:直近14日に別々の材料が重なった(同じ材料が何日も続く)銘柄(D50-A)
+    from assoc.events.ledger import build_ledger, collect_materials
+    liquid = liquid_codes(app.cfg, app.th.min_turnover_yen)
+    materials = collect_materials(app.con, company_index, day)
+    stock_ledger = build_ledger(app.con, company_index, day, liquid=liquid, names=master_names, by_code=materials)
+    # 企業の関係の地図:狙い撃ち・台帳の銘柄に、連想の候補を経路つきで添える(D50-B)
+    links = _link_map(app, company_index, day)
+    for item in [e for e in pack_events if e.get("sniper")] + stock_ledger:
+        code = (item.get("codes") or [item.get("code")])[0]
+        item["related"] = _related(links, materials, master_names, liquid, code)
+
     themes = _load_themes()
     # テーマ別の見出し件数の急増(足切りは1件ごとの判定なので、別々の会社の話が連日出る話題を取りこぼす。D37)。
     # 急増しているテーマは、代表の見出しをまとめて1つのイベントとして、足切りの枠外で通す。
@@ -278,6 +289,7 @@ def build_pack(app: "App", day: date) -> Path:
                             "sample_headlines": [{"title": x["title"], "media": x["media"], "url": x["url"]}
                                                  for x in t.samples[:3]]} for t in emerging],
         "headline_digest": digest,
+        "stock_ledger": stock_ledger,
         "themes": theme_rows,
         "theme_rotation": theme_rotation(tr, themes),
         "unexplained_movers": _unexplained(app, day),
@@ -305,6 +317,33 @@ def build_pack(app: "App", day: date) -> Path:
     pack["input_pack_hash"] = hashlib.sha256(body.encode("utf-8")).hexdigest()[:16]
     path.write_text(json.dumps(pack, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
     return path
+
+
+def _link_map(app: "App", index, day: date):
+    from assoc.events import links as L
+    lm = L.LinkMap()
+    L.add_groups(lm, index, {})
+    L.add_curated(lm, REPO_ROOT / "knowledge" / "company_links.yaml")
+    L.add_scenarios(lm, app.store.read("candidate"))
+    L.add_themes(lm, _theme_stock_codes(), _load_themes())
+    start = datetime.combine(day - timedelta(days=13), time.min, tzinfo=JST)
+    end = datetime.combine(day + timedelta(days=1), time.min, tzinfo=JST)
+    rows = app.con.execute("SELECT title || ' ' || coalesce(summary, '') FROM news_item "
+                           "WHERE first_observed_at >= ? AND first_observed_at < ?", [start, end]).fetchall()
+    L.add_co_mentions(lm, index, (r[0] for r in rows))
+    return lm
+
+
+def _related(links, materials, names: dict[str, str], liquid, code: str) -> list[dict]:
+    """連想の候補。売買代金の下限に満たない銘柄は除き、その銘柄自身の最近の材料(あれば)を添える。"""
+    from assoc.events.ledger import recent_materials
+    out = []
+    for r in links.related(code, limit=12):
+        if liquid is not None and r["code"] not in liquid:
+            continue
+        out.append({"code": r["code"], "company_name": names.get(r["code"], ""), "via": r["via"][:3],
+                    "recent_materials": recent_materials(materials, r["code"])[:2]})
+    return out[:6]
 
 
 class _Without:
