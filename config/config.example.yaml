@@ -13,7 +13,7 @@ prices:
   # (詳細は docs/PROPOSAL_HYBRID_AND_SHARING.md と src/assoc/market/layered_prices.py)。
   # layered:
   #   tactical: C:/path/to/既存システム/cis_engine/data/tactical_universe_ohlcv.parquet   # 日次で更新されている銘柄
-  #   history:  C:/path/to/既存システム/cis_engine/data/raw/daily_ohlcv.parquet           # 全銘柄の履歴(更新が止まっていることがある)
+  #   history:  C:/path/to/既存システム/ml_prices_ohlcv.parquet           # 全銘柄の履歴(株式分析側が週次で更新。daily_ohlcv.parquet はどの工程も更新しない)
   csv_dir: ""                    # source=csv_dir のとき、銘柄ごとの CSV が入ったフォルダ(例: D:/stock/prices)
   csv_filename: "{code}.csv"     # 例: 7203.csv。列は date, open, high, low, close, volume
   topix_code: "1306"             # TOPIX の代わりに使う ETF
