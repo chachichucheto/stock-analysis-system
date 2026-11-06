@@ -93,6 +93,15 @@ a { color: var(--accent); }
 .main-tab-btn:hover { background: var(--surface-2); color: var(--text-primary); }
 .main-tab-btn.active { background: var(--tc); color: #0b0b0b; border-color: var(--tc); }
 .main-tab-btn small { font-weight: 400; font-size: 11px; opacity: .85; margin-left: 6px; }
+.tab-bad { --tc: var(--c-bad); }
+:root { --c-bad: #ef4444; }
+.stance-banner { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; padding: 10px 14px; margin: 6px 0 4px;
+  border-radius: 8px; border: 1px solid var(--border); border-left: 6px solid var(--sc, var(--border-strong)); background: var(--surface-1); }
+.stance-banner b { font-size: 16px; } .stance-banner a { color: var(--text-secondary); }
+.stance-通常 { --sc: var(--pos); } .stance-慎重 { --sc: var(--warning); } .stance-投資を控える { --sc: var(--critical); }
+.callcard { border-left: 5px solid var(--cc, var(--border-strong)); }
+.call-撤退 { --cc: var(--critical); } .call-縮小 { --cc: var(--serious); } .call-警戒 { --cc: var(--warning); } .call-継続 { --cc: var(--pos); }
+.pill { display: inline-block; padding: 0 8px; border-radius: 10px; font-size: 12px; border: 1px solid var(--border-strong); margin-right: 6px; }
 .tab-judge { --tc: var(--c-judge); } .tab-check { --tc: var(--c-check); }
 .tab-system { --tc: var(--c-system); } .tab-news { --tc: var(--c-news); } .tab-picked { --tc: var(--c-picked); }
 .tabpane section h2 { border-left: 6px solid var(--tc); padding-left: 10px; font-size: 17px; }
@@ -240,7 +249,7 @@ NEWS_JS = """
   $('nf-reset').onclick = function () { $('nf-q').value = ''; $('nf-kind').value = ''; $('nf-media').value = ''; $('nf-day').value = ''; apply(); };
   apply();
 })();
-var TABS = ['judge', 'picked', 'check', 'system', 'news'];
+var TABS = ['judge', 'bad', 'picked', 'check', 'system', 'news'];
 function showMainTab(name) {
   if (TABS.indexOf(name) < 0) name = 'judge';
   TABS.forEach(function (t) {
@@ -300,6 +309,137 @@ def _picked_tab(app: "App", cands: dict) -> str:
             f'<p class="note">直近14日に、種類の違う材料が日をまたいで重なった(または同じ材料が続く)銘柄。</p>'
             + _table(["銘柄", "理由", "材料", "判断", "連想先(経路)"], led_rows, set(), "台帳に載る銘柄はありません")
             + '</section></main>')
+
+
+_STANCE_ICON = {"通常": "🟢", "慎重": "🟡", "投資を控える": "🔴"}
+_RESUME_TXT = {"まだ": "🔴 まだ再開しない", "条件つきで一部": "🟡 条件つきで一部", "可": "🟢 再開してよい"}
+_CAUSE_LEVEL = {"未解消": "critical", "一部解消": "warning", "解消": "good"}
+
+
+def _latest(rows: list[dict], key: str = "run_date") -> list[dict]:
+    """記録のうち、最新の日付の分だけを返す。"""
+    if not rows:
+        return []
+    newest = max(r[key] for r in rows)
+    return [r for r in rows if r[key] == newest]
+
+
+def _bad_data(app: "App", day: date) -> dict[str, Any]:
+    iso = day.isoformat()
+    stances = [m for m in app.store.read("market_stance") if m.get("run_date", "") <= iso]
+    stance = max(stances, key=lambda m: (m["run_date"], m.get("_seq", 0)), default=None)
+    calls = [c for c in app.store.read("exit_call") if c.get("run_date", "") <= iso]
+    data: dict[str, Any] = {"stance": stance, "calls": calls, "latest_calls": _latest(calls), "regime": {}, "watch": {}}
+    for key, fn in (("regime", app.market_regime), ("watch", app.exit_watch)):
+        try:
+            data[key] = fn(day)
+        except Exception as e:      # 計算できなくても、ダッシュボード全体は作る
+            data[key] = {"error": str(e)}
+    return data
+
+
+def _stance_banner(d: dict[str, Any]) -> str:
+    st, rg = d["stance"], d["regime"]
+    level = (st or {}).get("stance") or rg.get("level") or "通常"
+    parts = [f'<b>{_STANCE_ICON.get(level, "")} 相場の姿勢:{_e(level)}</b>']
+    if st:
+        parts.append(f'投資の再開:{_e(_RESUME_TXT.get(st["resume"]["verdict"], st["resume"]["verdict"]))}')
+        parts.append(f'<span class="note">夜の判断 {_e(st["run_date"])}</span>')
+    elif rg.get("level"):
+        parts.append('<span class="note">機械の判定のみ(夜の判断は未記入)</span>')
+    if rg.get("level") and st and rg["level"] != st["stance"]:
+        parts.append(f'<span class="note">機械の判定:{_e(rg["level"])}</span>')
+    parts.append('<a href="#bad" onclick="showMainTab(\'bad\');return false;">詳しくは「悪い材料」タブ</a>')
+    return f'<div class="stance-banner stance-{_e(level)}">{" ".join(parts)}</div>'
+
+
+def _bad_tab(d: dict[str, Any], n_pick: int, n_caution: int) -> str:
+    st, rg, watch = d["stance"], d["regime"], d["watch"]
+    latest = d["latest_calls"]
+    act = [c for c in latest if c["action"] in ("撤退", "縮小")]
+    wait = [c for c in latest if c["action"] == "警戒"]
+    keep = [c for c in latest if c["action"] == "継続"]
+
+    # --- 姿勢・再開 ---
+    if st:
+        causes = [[_e(c["cause"]), _badge(_CAUSE_LEVEL.get(c["status"], "info"), c["status"]), _e(c["detail"]),
+                   _e(c.get("next_check", "―"))] for c in st["causes"]]
+        r = st["resume"]
+        conds = ("<p>再開してよい条件:</p><ul>" + "".join(f"<li>{_e(c)}</li>" for c in r["conditions"]) + "</ul>"
+                 if r.get("conditions") else "")
+        stance_html = (f'<p><b>{_STANCE_ICON.get(st["stance"], "")} {_e(st["stance"])}</b> — {_e(st["summary"])}</p>'
+                       '<h3>下げた理由は解消されたか</h3>'
+                       + _table(["理由", "状態", "詳細", "次に確かめること"], causes, set(), "理由の記入なし(平時)")
+                       + f'<h3>投資の再開:{_e(_RESUME_TXT.get(r["verdict"], r["verdict"]))}</h3><p>{_e(r["reason"])}</p>' + conds)
+    else:
+        stance_html = '<div class="empty">夜の判断の「相場の姿勢」がまだ記録されていません(次回の夜の手順から出ます)</div>'
+    rg_html = ""
+    if rg.get("level"):
+        sb = rg.get("stabilization") or {}
+        rg_html = (f'<p class="note">機械の判定(株価の事実):<b>{_e(rg["level"])}</b> — {_e(" / ".join(rg.get("reasons") or ["異常なし"]))}<br>'
+                   f'底打ちの目印({"✓ 落ち着いた" if sb.get("stabilized") else "✗ まだ落ち着いていない"}):{_e(" / ".join(sb.get("notes", [])))}<br>'
+                   '<b>株価が落ち着いただけでは、投資再開の理由になりません。</b>下げた理由が解消されたかを上の表で確かめます。</p>')
+    elif rg.get("error"):
+        rg_html = f'<p class="note">⚠ {_e(rg["error"])}</p>'
+    balance = ('<div class="kpis">'
+               + _tile("悪い材料:対応する", str(len(act)), "撤退・縮小", "var(--critical)")
+               + _tile("悪い材料:様子見・影響軽微", str(len(wait) + len(keep)), "警戒・継続", "var(--warning)")
+               + _tile("良い材料:本命", str(n_pick), "買い候補", "var(--pos)")
+               + _tile("警戒の候補", str(n_caution), "下がる側のシナリオ", "var(--neg)") + '</div>'
+               '<p class="note">悪いニュースは毎日たくさんある。本命・保有・追跡テーマに関係するか、前提が変わるものだけを「対応する」に数える。'
+               '平時に対応が増え続けるなら、閾値を見直す合図。</p>')
+
+    # --- 撤退・縮小の提案 ---
+    def card(c: dict) -> str:
+        tags = "".join(f'<span class="pill">{_e(x)}</span>' for x in (
+            f'悪材料の大きさ:{c["severity"]}' if c.get("severity") else "", f'範囲:{c["scope"]}' if c.get("scope") else "",
+            c.get("urgency") or "") if x)
+        codes = "、".join(f'{_e(x["company_name"])}({_e(x["code"])})' for x in c.get("codes", []))
+        alts = "<br>".join(f'{_e(a["company_name"])}({_e(a["code"])}) — {_e(a["why"])}' for a in c.get("alternatives", []))
+        urls = " ".join(f'<a href="{_e(u)}" target="_blank" rel="noopener">根拠{i}</a>'
+                        for i, u in enumerate(c.get("evidence_urls", [])[:3], 1))
+        rows = [("理由", _e(c["reason"])), ("きっかけ", _e(c["trigger"])), ("対象の銘柄", codes), ("乗り換え先の候補", alts),
+                ("戻ってよい条件", _e(c["reentry_conditions"])), ("判断が外れる条件", _e(c["wrong_if"])), ("根拠", urls)]
+        dl = "".join(f"<dt>{k}</dt><dd>{v}</dd>" for k, v in rows if v)
+        return (f'<div class="card callcard call-{_e(c["action"])}"><h3>{_e(c["action"])}:{_e(c["target"])} '
+                f'<span class="note">{_e(c["target_type"])}</span></h3><div>{tags}</div><dl>{dl}</dl></div>')
+
+    order = {"撤退": 0, "縮小": 1, "警戒": 2, "継続": 3}
+    cards = "".join(card(c) for c in sorted(latest, key=lambda c: order.get(c["action"], 9)))
+    if latest:
+        calls_html = (f'<p class="note">夜の判断 {_e(latest[0]["run_date"])} の提案。売買の指示ではなく判断材料。空売りの推奨は含まない。</p>'
+                      f'<div class="cards">{cards}</div>')
+    else:
+        calls_html = '<div class="empty">撤退・縮小の提案はまだ記録されていません(次回の夜の手順から出ます)</div>'
+
+    # --- 機械の目印 ---
+    lv = {"撤退検討": "critical", "縮小検討": "serious", "警戒": "warning"}
+    th_rows = [[_e(t["name"]), _badge(lv.get(t["level"], "info"), t["level"]), _signed(t.get("median_5d")), _signed(t.get("median_1m")),
+                _e(" / ".join(t["reasons"])),
+                _e("、".join(f'{a["name"]}({a["code"]}・{"/".join(a["sources"])})' for a in t["affected_holdings"]) or "―")]
+               for t in watch.get("themes", [])]
+    st_rows = [[f'{_e(x["name"])}({_e(x["code"])}・{_e("/".join(x["sources"]))})', _badge(lv.get(x["level"], "info"), x["level"]),
+                _signed(x["metrics"].get("since_pick")), _signed(x["metrics"].get("from_peak")), _signed(x["metrics"].get("ret_5d")),
+                _e(" / ".join(x["reasons"]))] for x in watch.get("stocks", [])]
+    machine_html = (f'<p class="note">株価の絶対の動きから機械が出した目印(追跡 {_e(watch.get("tracked_codes", 0))} 銘柄。'
+                    'シナリオが終わった銘柄も含む)。保有銘柄は knowledge/holdings.yaml に書くと追加される。</p>'
+                    + (f'<p class="note">⚠ {_e(watch["error"])}</p>' if watch.get("error") else "")
+                    + "<h3>テーマ</h3>" + _table(["テーマ", "目印", "5日", "1か月", "理由", "追っている銘柄"], th_rows, {2, 3}, "目印なし")
+                    + "<h3>銘柄</h3>" + _table(["銘柄", "目印", "本命にした日から", "高値から", "5日", "理由"], st_rows, {2, 3, 4}, "目印なし"))
+
+    # --- 履歴 ---
+    hist = sorted(d["calls"], key=lambda c: (c["run_date"], c.get("_seq", 0)), reverse=True)[:60]
+    hist_rows = [[_e(c["run_date"]), _e(c["target"]), _e(c["action"]), _e(c.get("severity", "―")), _e(c["trigger"][:60]),
+                  _e(c["wrong_if"][:50])] for c in hist]
+    hist_html = (_table(["日付", "対象", "判断", "大きさ", "きっかけ", "外れる条件"], hist_rows, set(), "まだ記録がありません")
+                 + '<p class="note">後で「撤退を出したあと、実際にどう動いたか」を答え合わせする土台。</p>')
+
+    return ('<nav><a href="#stance">姿勢と再開</a><a href="#calls">撤退・縮小の提案</a><a href="#machine">機械の目印</a>'
+            '<a href="#bhistory">履歴</a></nav><main>'
+            f'<section id="stance"><h2>相場の姿勢と投資再開の判断</h2>{balance}{stance_html}{rg_html}</section>'
+            f'<section id="calls"><h2>撤退・縮小の提案(悪い材料への対応)</h2>{calls_html}</section>'
+            f'<section id="machine"><h2>機械の目印(株価の絶対の動き)</h2>{machine_html}</section>'
+            f'<section id="bhistory"><h2>提案の履歴</h2>{hist_html}</section></main>')
 
 
 def _e(x: Any) -> str:
@@ -614,6 +754,9 @@ def build_dashboard(app: "App", day: date | None = None) -> Path:
 
     news_json, n_news = _news_payload(app)
     picked_html = _picked_tab(app, cands)
+    bad = _bad_data(app, day)
+    bad_html = _bad_tab(bad, n_pick, n_caution)
+    banner_html = _stance_banner(bad)
 
     html = f"""<!doctype html>
 <html lang="ja"><head><meta charset="utf-8">
@@ -624,8 +767,10 @@ def build_dashboard(app: "App", day: date | None = None) -> Path:
 <header><h1>連想ダッシュボード</h1>
 <span class="meta">作成 {generated} / 最新のレポート {_e(last_date or 'まだありません')}
 {f' / <a href="{_e(report_link)}">連想レポートを開く</a>' if report_link else ''}</span></header>
+{banner_html}
 <div class="main-tabs">
-<div class="main-tab-btn tab-judge active" id="btn-judge" onclick="showMainTab('judge')">今日の判断<small>要点・本命・ランキング・シナリオ</small></div>
+<div class="main-tab-btn tab-judge active" id="btn-judge" onclick="showMainTab('judge')">良い材料(買い)<small>要点・本命・ランキング・シナリオ</small></div>
+<div class="main-tab-btn tab-bad" id="btn-bad" onclick="showMainTab('bad')">悪い材料(撤退・縮小)<small>姿勢・再開の判断・提案</small></div>
 <div class="main-tab-btn tab-picked" id="btn-picked" onclick="showMainTab('picked')">拾った材料<small>狙い撃ち・材料台帳・連想先</small></div>
 <div class="main-tab-btn tab-check" id="btn-check" onclick="showMainTab('check')">点検と履歴<small>継続性・売りのサイン・本命の履歴</small></div>
 <div class="main-tab-btn tab-system" id="btn-system" onclick="showMainTab('system')">システム状態<small>収集・実行記録</small></div>
@@ -652,6 +797,9 @@ def build_dashboard(app: "App", day: date | None = None) -> Path:
 {_table(["番号", "シナリオ", "状態", "立てた日", "起動日", "顕在化日", "終了日", "経過(営業日)", "想定上昇幅(中央)", "候補ごとの結果"],
         archive_rows, {7, 8}, "まだシナリオがありません")}</section>
 </main></div>
+
+<div id="tab-bad" class="tabpane tab-bad" hidden>
+{bad_html}</div>
 
 <div id="tab-picked" class="tabpane tab-picked" hidden>
 {picked_html}</div>

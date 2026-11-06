@@ -714,6 +714,145 @@
             "type": "string",
             "minLength": 1,
             "description": "この判断が間違いだったと分かる条件(ここまで戻れば撤退は早すぎた)"
+          },
+          "severity": {
+            "enum": [
+              "強",
+              "中",
+              "小"
+            ],
+            "description": "悪材料の大きさ。強=相場全体や主要テーマの前提が変わる / 中=セクターや大型の個社に効く / 小=個社限定。小さい悪材料で撤退を出さない(バランス)"
+          },
+          "scope": {
+            "enum": [
+              "相場全体",
+              "セクター",
+              "個社"
+            ]
+          },
+          "alternatives": {
+            "type": "array",
+            "description": "乗り換え先の候補(同じ目的を、悪材料の影響が小さい形で満たす銘柄)。無理に出さない",
+            "items": {
+              "type": "object",
+              "required": [
+                "code",
+                "company_name",
+                "why"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "pattern": "^[0-9][0-9A-Z]{3}$"
+                },
+                "company_name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "why": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "market_stance": {
+      "type": "object",
+      "description": "相場の姿勢と、投資再開の判定(D52)。毎日書く。株価が戻っても、下げた理由が解消されていなければ再開と言わない。",
+      "required": [
+        "stance",
+        "summary",
+        "causes",
+        "resume"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "stance": {
+          "enum": [
+            "通常",
+            "慎重",
+            "投資を控える"
+          ],
+          "description": "入力パックの market_regime.level を出発点にし、変えるなら summary に理由を書く"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "description": "いまの相場を2〜3文で。何が起きて、いまどこにいるか"
+        },
+        "causes": {
+          "type": "array",
+          "description": "相場が下がった(悪い)理由を1つずつ。平時は空でよい",
+          "items": {
+            "type": "object",
+            "required": [
+              "cause",
+              "status",
+              "detail"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "cause": {
+                "type": "string",
+                "minLength": 1
+              },
+              "status": {
+                "enum": [
+                  "未解消",
+                  "一部解消",
+                  "解消"
+                ]
+              },
+              "detail": {
+                "type": "string",
+                "minLength": 1,
+                "description": "なぜその状態と判断したか。まだ分からない点も書く"
+              },
+              "next_check": {
+                "type": "string",
+                "description": "次に何を確かめるか(日付つき)"
+              },
+              "evidence_urls": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "resume": {
+          "type": "object",
+          "required": [
+            "verdict",
+            "reason",
+            "conditions"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "verdict": {
+              "enum": [
+                "まだ",
+                "条件つきで一部",
+                "可"
+              ],
+              "description": "投資を再開してよいか。未解消の理由が残るなら『可』にしない(確定処理で直される)"
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            },
+            "conditions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "再開してよい条件(出来事・指標・日付)。具体的に"
+            }
           }
         }
       }

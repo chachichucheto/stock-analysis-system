@@ -87,7 +87,7 @@ def commit_daily(doc: dict[str, Any], store: RecordStore, master: CompanyMaster,
         return ref if ref in known_scenarios else None
 
     counts = {k: 0 for k in ("premise_card", "grade", "scenario", "candidate", "check_plan",
-                             "evidence", "scenario_update", "theme_temperature", "exit_call")}
+                             "evidence", "scenario_update", "theme_temperature", "exit_call", "market_stance")}
 
     for card in doc.get("premise_cards", []):
         store.append("premise_card", {**common, **card})
@@ -183,8 +183,31 @@ def commit_daily(doc: dict[str, Any], store: RecordStore, master: CompanyMaster,
                 good.append({"code": c["code"], "company_name": check.master_name or c["company_name"]})
             else:
                 result.warnings.append(f"撤退の判断 {call['target']}: 銘柄 {c['code']} {c['company_name']} を落とす({check.reason})")
-        store.append("exit_call", {**common, **{k: v for k, v in call.items() if k != "codes"}, "codes": good})
+        alts = []
+        for c in call.get("alternatives", []):
+            check = master.check(c["code"], c["company_name"])
+            if check.ok:
+                alts.append({**c, "company_name": check.master_name or c["company_name"]})
+            else:
+                result.warnings.append(f"撤退の判断 {call['target']}: 乗り換え先 {c['code']} {c['company_name']} を落とす({check.reason})")
+        rec = {k: v for k, v in call.items() if k not in ("codes", "alternatives")}
+        store.append("exit_call", {**common, **rec, "codes": good, "alternatives": alts})
         counts["exit_call"] += 1
+
+    # 相場の姿勢と投資再開の判定(D52)。下げた理由が未解消のまま「再開可」とは言わせない
+    ms = doc.get("market_stance")
+    if ms:
+        ms = json.loads(json.dumps(ms))
+        unresolved = [c["cause"] for c in ms["causes"] if c["status"] == "未解消"]
+        if unresolved and ms["resume"]["verdict"] == "可":
+            ms["resume"]["verdict"] = "条件つきで一部"
+            result.warnings.append("投資再開の判定を「可」から「条件つきで一部」に直した(未解消の理由が残る: "
+                                   + "、".join(unresolved[:3]) + ")")
+        if ms["stance"] == "投資を控える" and ms["resume"]["verdict"] != "まだ" and unresolved:
+            ms["resume"]["verdict"] = "まだ"
+            result.warnings.append("姿勢が「投資を控える」で未解消の理由が残るため、投資再開の判定を「まだ」に直した")
+        store.append("market_stance", {**common, **ms})
+        counts["market_stance"] += 1
 
     result.ok = True
     result.counts = counts

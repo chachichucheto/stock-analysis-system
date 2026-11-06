@@ -97,6 +97,19 @@ class Thresholds:
     exit_theme_5d_cut: float = -0.10     # → 縮小検討
     exit_theme_1m_cut: float = -0.15     # 1か月 → 縮小検討
     exit_theme_1m_out: float = -0.25     # 1か月がこれ以下で、5日も縮小検討の水準なら → 撤退検討
+    # 相場の姿勢(market/regime.py。D52)。暫定。TOPIX の事実だけで決める(ニュースの数では決めない)
+    regime_high_days: int = 60           # 高値からの下落を測る営業日数
+    regime_out_1d: float = -0.03         # 投資を控える:1日
+    regime_out_5d: float = -0.05         # 投資を控える:5日
+    regime_out_high: float = -0.12       # 投資を控える:高値から
+    regime_warn_5d: float = -0.03        # 慎重:5日
+    regime_warn_high: float = -0.06      # 慎重:高値から
+    regime_theme_down: float = -0.10     # 「下げているテーマ」:代表銘柄の5日の中央値
+    regime_warn_themes: int = 5          # 下げているテーマがこの数以上なら 慎重
+    regime_low_days: int = 10            # 直近安値を探す営業日数
+    regime_calm_days: int = 3             # 底打ちの目印:安値からこの営業日数以上たった
+    regime_rebound: float = 0.03         # 安値からこの割合以上戻した
+    regime_calm_day_drop: float = -0.02  # 直近3日の1日下落がこれより浅い
 
 
 @dataclass

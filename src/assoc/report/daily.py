@@ -27,6 +27,8 @@ class DayContext:
     health: list[dict[str, Any]] = field(default_factory=list)         # 最新日の継続性チェック(重い順)
     exit_calls: list[dict[str, Any]] = field(default_factory=list)     # その日の夜の判断が出した撤退・縮小(D51)
     exit_watch: dict[str, Any] = field(default_factory=dict)           # 機械の目印(株価の絶対の動き。D51)
+    market_stance: dict[str, Any] = field(default_factory=dict)        # その日の夜の判断が出した相場の姿勢・投資再開の判定(D52)
+    regime: dict[str, Any] = field(default_factory=dict)               # 機械の相場の姿勢と底打ちの目印(D52)
 
 
 def _pct(x: float | None, signed: bool = False) -> str:
@@ -94,6 +96,45 @@ def _fmt_codes(codes: list[dict[str, Any]]) -> str:
     return "、".join(f"{c.get('company_name') or c.get('name') or c['code']}({c['code']})" for c in codes)
 
 
+_STANCE_MARK = {"通常": "🟢 通常", "慎重": "🟡 慎重", "投資を控える": "🔴 投資を控える"}
+_CAUSE_MARK = {"未解消": "🔴 未解消", "一部解消": "🟡 一部解消", "解消": "🟢 解消"}
+_RESUME_MARK = {"まだ": "🔴 まだ再開しない", "条件つきで一部": "🟡 条件つきで一部", "可": "🟢 再開してよい"}
+
+
+def render_stance_section(stance: dict[str, Any], regime: dict[str, Any]) -> list[str]:
+    """相場の姿勢と投資再開の判定(D52)。株価が戻っても、下げた理由が解消されなければ再開と言わない。"""
+    if not stance and not regime:
+        return []
+    lines = ["## 相場の姿勢と投資再開の判断", ""]
+    machine = regime.get("level")
+    if stance:
+        lines.append(f"**姿勢:{_STANCE_MARK.get(stance['stance'], stance['stance'])}**"
+                     + (f"(機械の判定:{machine})" if machine and machine != stance["stance"] else ""))
+        lines += ["", stance["summary"], ""]
+        if machine == "投資を控える" and stance["stance"] == "通常":
+            lines += ["> ⚠ 機械の判定(株価の事実)は「投資を控える」ですが、夜の判断は「通常」です。理由を確かめてください。", ""]
+    elif machine:
+        lines += [f"**姿勢(機械の判定のみ):{_STANCE_MARK.get(machine, machine)}**(夜の判断は未記入)", ""]
+    if regime.get("reasons"):
+        lines.append("- 機械の根拠:" + " / ".join(regime["reasons"]))
+    st = regime.get("stabilization") or {}
+    if st.get("notes"):
+        lines.append(f"- 底打ちの目印(株価が落ち着いたか。{'✓ 落ち着いた' if st.get('stabilized') else '✗ まだ落ち着いていない'}):" + " / ".join(st["notes"]))
+        lines.append("  - 落ち着いただけでは再開の理由にならない。下げた理由が解消されたかを、下で確かめる")
+    lines.append("")
+    if stance and stance.get("causes"):
+        lines += ["### 下げた理由は解消されたか", "", "| 理由 | 状態 | 詳細 | 次に確かめること |", "|---|---|---|---|"]
+        for c in stance["causes"]:
+            lines.append(f"| {c['cause']} | {_CAUSE_MARK.get(c['status'], c['status'])} | {c['detail']} | {c.get('next_check', '―')} |")
+        lines.append("")
+    if stance:
+        r = stance["resume"]
+        lines += [f"### 投資の再開:{_RESUME_MARK.get(r['verdict'], r['verdict'])}", "", r["reason"], ""]
+        if r.get("conditions"):
+            lines += ["再開してよい条件:", *[f"- {c}" for c in r["conditions"]], ""]
+    return lines
+
+
 def render_exit_section(calls: list[dict[str, Any]], watch: dict[str, Any]) -> list[str]:
     """撤退・縮小の提案(D51)。夜の判断(理由つき)を先に、機械の目印を後に。売買の指示ではなく判断材料。"""
     lines = ["## 撤退・縮小の提案", "",
@@ -101,8 +142,13 @@ def render_exit_section(calls: list[dict[str, Any]], watch: dict[str, Any]) -> l
     order = {"撤退": 0, "縮小": 1, "警戒": 2, "継続": 3}
     for c in sorted(calls, key=lambda c: order.get(c["action"], 9)):
         urg = f"({c['urgency']})" if c.get("urgency") else ""
+        tags = " / ".join(x for x in (f"悪材料の大きさ:{c['severity']}" if c.get("severity") else "",
+                                      f"範囲:{c['scope']}" if c.get("scope") else "") if x)
         lines += [f"### {_ACTION_MARK.get(c['action'], c['action'])}{urg}:{c['target']}", "",
-                  f"- **理由**:{c['reason']}", f"- **きっかけ**:{c['trigger']}"]
+                  f"- **理由**:{c['reason']}", f"- **きっかけ**:{c['trigger']}" + (f"({tags})" if tags else "")]
+        if c.get("alternatives"):
+            lines.append("- **乗り換え先の候補**:" + "、".join(
+                f"{a['company_name']}({a['code']}・{a['why']})" for a in c["alternatives"]))
         if c.get("codes"):
             lines.append(f"- **対象の銘柄**:{_fmt_codes(c['codes'])}")
         lines += [f"- **戻ってよい条件**:{c['reentry_conditions']}", f"- **この判断が外れる条件**:{c['wrong_if']}"]
@@ -145,6 +191,7 @@ def render_daily(eval_date: date, evals: list[CandidateEval], ctx: DayContext) -
              f"撤退・縮小 {sum(1 for c in ctx.exit_calls if c['action'] in ('撤退', '縮小'))} 件", ""]
     if ctx.warnings:
         lines += ["> **注意**", *[f"> - {w}" for w in ctx.warnings], ""]
+    lines += render_stance_section(ctx.market_stance, ctx.regime)
     lines += render_exit_section(ctx.exit_calls, ctx.exit_watch)
     if not picks:
         lines += ["**本命:該当なし**", ""]

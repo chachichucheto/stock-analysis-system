@@ -170,7 +170,13 @@ class App:
             exit_watch = self.exit_watch(day)
         except Exception as e:
             exit_watch = {"error": f"撤退の目印を作れませんでした: {e}"}
+        try:
+            regime = self.market_regime(day)
+        except Exception as e:
+            regime = {"error": str(e)}
+        stances = [m for m in self.store.read("market_stance") if m.get("run_date") == iso]
         return DayContext(
+            market_stance=stances[-1] if stances else {}, regime=regime,
             exit_calls=[c for c in self.store.read("exit_call") if c.get("run_date") == iso],
             exit_watch=exit_watch,
             new_scenarios=[s for s in scenarios.values() if s.created_date == day],
@@ -191,6 +197,16 @@ class App:
         tr = _json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
         return build_exit_watch(self.store.read("pick_tracking"), holdings_codes(), loader, topix, day,
                                 CompanyMaster.from_db(self.con).names, tr, _load_themes(), self.th)
+
+    def market_regime(self, day: date) -> dict[str, Any]:
+        """相場の姿勢(通常/慎重/投資を控える)と底打ちの目印(D52)。TOPIX と全テーマの下げ具合だけで決める。"""
+        import json as _json
+        from assoc.market import theme_returns
+        from assoc.market.regime import market_regime
+        loader = PriceLoader(price_source_from_config(self.cfg), day, YFinanceLivePriceSource())
+        path = theme_returns.RETURNS_PATH
+        tr = _json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+        return market_regime(loader.get(self.topix_code()), tr, day, self.th)
 
     def latest_health(self, day: date) -> list[dict[str, Any]]:
         """day 以前で最新の継続性チェック(1日分)を、重い状態(劣化 → 注意 → 織り込み進行 → 継続 → 終了)の順で返す。"""

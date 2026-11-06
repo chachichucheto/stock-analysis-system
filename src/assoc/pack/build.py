@@ -281,6 +281,11 @@ def build_pack(app: "App", day: date) -> Path:
     except Exception as e:      # 目印が作れなくても、パック全体は止めない
         exit_watch = {"error": f"撤退の目印を作れませんでした: {e}"}
 
+    try:
+        regime = app.market_regime(day)
+    except Exception as e:
+        regime = {"error": f"相場の姿勢を計算できませんでした: {e}"}
+
     pack = {
         "pack_version": PACK_VERSION, "date": day.isoformat(), "generated_at": to_iso(now), "mode": "通常",
         "window": {"from": to_iso(window_start), "to": to_iso(window_end)},
@@ -299,6 +304,7 @@ def build_pack(app: "App", day: date) -> Path:
         "themes": theme_rows,
         "theme_rotation": theme_rotation(tr, themes),
         "exit_watch": exit_watch,
+        "market_regime": regime,
         "unexplained_movers": _unexplained(app, day),
         "macro_drivers": detect_macro_drivers(app.con, day, tr, names=themes),
         "recently_ended_scenarios": _recently_ended(app, day, scenarios, burst_by_theme, shocks),

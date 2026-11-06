@@ -125,7 +125,9 @@ class CompanyIndex:
         primary: dict[str, set[str]] = {}
         for alias, code in (aliases or {}).items():
             a = normalize(alias)
-            if len(a) >= MIN_KEY_LEN and a not in stop and code in master.names:
+            # 手で書いた別名なら、2文字の英字(JT など)も使う。前後が英数字でないときだけ当たる(JTB には当たらない)
+            short_ascii = len(a) == 2 and a.isascii() and a.isalpha()
+            if (len(a) >= MIN_KEY_LEN or short_ascii) and a not in stop and code in master.names:
                 key_codes.setdefault(a, set()).add(code)
                 if a in groups:
                     primary.setdefault(a, set()).add(code)

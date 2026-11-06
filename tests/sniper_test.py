@@ -54,3 +54,24 @@ def test_issuer_disclosure_counts_as_corroboration():
     ev = _ev(1, "不正アクセスに関するお知らせ", media=1, disclosure=True, codes=["4684"])
     h = detect_sniper([ev], _index(), liquid=None)[0]
     assert h.code == "4684" and "本人の開示あり" in h.reasons
+
+
+def test_geopolitical_seizure_of_a_named_company_passes_even_with_one_media():
+    # 2026-11: ロシアが JT の資産を接収。見出しにも材料の種類にも無く、拾えなかった(D52)
+    names = {**NAMES, "2914": "日本たばこ産業"}
+    index = CompanyIndex.from_master(CompanyMaster(names), {**ALIASES, "JT": "2914"})
+    ev = _ev(1, "ロシア、JTのロシア子会社を接収 プーチン大統領が大統領令", media=1)
+    assert classify(ev.title)[0] == "接収・国有化"
+    assert [(h.code, h.type) for h in detect_sniper([ev], index, liquid=None)] == [("2914", "接収・国有化")]
+
+
+def test_broad_sanction_words_need_corroboration():
+    weak = _ev(1, "トヨタ、関税の影響を解説", media=1)
+    strong = _ev(2, "トヨタ、米関税で通期利益を5000億円圧迫", media=3)      # 3媒体+金額で通る
+    assert detect_sniper([weak], _index(), liquid=None) == []
+    assert len(detect_sniper([strong], _index(), liquid=None)) == 1
+
+
+def test_two_letter_alias_does_not_hit_longer_ascii_words():
+    index = CompanyIndex.from_master(CompanyMaster({**NAMES, "2914": "日本たばこ産業"}), {**ALIASES, "JT": "2914"})
+    assert detect_sniper([_ev(1, "JTBが旅行商品の情報漏えいを発表", media=3)], index, liquid=None) == []
