@@ -19,7 +19,7 @@ KINDS = frozenset({
     "grade", "premise_card", "scenario", "scenario_update", "check_plan",
     "evidence", "candidate", "ranking_snapshot", "pick_tracking", "user_decision",
     "run_log", "event_gate", "commit_rejection", "theme_temperature", "monthly_review",
-    "scenario_status", "grade_final", "past_case", "health_snapshot", "scenario_milestone",
+    "scenario_status", "grade_final", "past_case", "health_snapshot", "scenario_milestone", "exit_call",
 })
 
 

@@ -621,6 +621,102 @@
           }
         }
       }
+    },
+    "exit_calls": {
+      "type": "array",
+      "description": "撤退・縮小の判断(D51)。exit_watch に目印がある日、または相場全体が急落した日は必ず書く。売買の指示ではなく判断材料。空売りの推奨は含めない。",
+      "items": {
+        "type": "object",
+        "required": [
+          "target_type",
+          "target",
+          "action",
+          "reason",
+          "trigger",
+          "reentry_conditions",
+          "wrong_if"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "target_type": {
+            "enum": [
+              "相場全体",
+              "テーマ",
+              "銘柄"
+            ]
+          },
+          "target": {
+            "type": "string",
+            "minLength": 1,
+            "description": "相場全体なら『全体』、テーマならテーマ名(例:AI・半導体)、銘柄なら『コード 社名』"
+          },
+          "codes": {
+            "type": "array",
+            "description": "対象に含まれる銘柄。テーマ・相場全体のときは、特に影響が大きい銘柄(本命にした銘柄・保有銘柄を優先)",
+            "items": {
+              "type": "object",
+              "required": [
+                "code",
+                "company_name"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "pattern": "^[0-9][0-9A-Z]{3}$"
+                },
+                "company_name": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          "action": {
+            "enum": [
+              "撤退",
+              "縮小",
+              "警戒",
+              "継続"
+            ],
+            "description": "撤退=全部手放す方向 / 縮小=一部手放す・新規を止める / 警戒=今は動かず条件を見る / 継続=目印が出たが保有の根拠は崩れていない"
+          },
+          "urgency": {
+            "enum": [
+              "今日中",
+              "数日内",
+              "様子見"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "description": "なぜか。因果の道筋(何が起きた→なぜ下がり続けるか)を書く。株価の下落だけを理由にしない"
+          },
+          "trigger": {
+            "type": "string",
+            "minLength": 1,
+            "description": "きっかけになった出来事(日付つき)"
+          },
+          "evidence_urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "このセッションで実際に開いたページだけ"
+          },
+          "reentry_conditions": {
+            "type": "string",
+            "minLength": 1,
+            "description": "戻ってよい(買い直してよい)条件。具体的に(価格・出来事・指標)"
+          },
+          "wrong_if": {
+            "type": "string",
+            "minLength": 1,
+            "description": "この判断が間違いだったと分かる条件(ここまで戻れば撤退は早すぎた)"
+          }
+        }
+      }
     }
   },
   "$defs": {

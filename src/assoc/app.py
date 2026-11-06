@@ -166,11 +166,31 @@ class App:
                 warnings.append(f"収集が3回続けて失敗しています: {', '.join(failing)}")
         except Exception:
             pass
+        try:
+            exit_watch = self.exit_watch(day)
+        except Exception as e:
+            exit_watch = {"error": f"撤退の目印を作れませんでした: {e}"}
         return DayContext(
+            exit_calls=[c for c in self.store.read("exit_call") if c.get("run_date") == iso],
+            exit_watch=exit_watch,
             new_scenarios=[s for s in scenarios.values() if s.created_date == day],
             updates=[u for u in self.store.read("scenario_update") if u.get("run_date") == iso],
             ended=ended, grades=grades, evidence=evidence, sell_signals=signals, warnings=warnings,
             health=self.latest_health(day))
+
+    def exit_watch(self, day: date) -> dict[str, Any]:
+        """撤退・縮小の目印(D51)。本命にした銘柄(シナリオが終わっても追う)・保有銘柄・テーマの、株価の絶対の動きで見る。"""
+        import json as _json
+        from assoc.market import theme_returns
+        from assoc.master.names import CompanyMaster
+        from assoc.pack.build import _load_themes
+        from assoc.tracking.exit_watch import build_exit_watch, holdings_codes
+        loader = PriceLoader(price_source_from_config(self.cfg), day, YFinanceLivePriceSource())
+        topix = loader.get(self.topix_code())
+        path = theme_returns.RETURNS_PATH
+        tr = _json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+        return build_exit_watch(self.store.read("pick_tracking"), holdings_codes(), loader, topix, day,
+                                CompanyMaster.from_db(self.con).names, tr, _load_themes(), self.th)
 
     def latest_health(self, day: date) -> list[dict[str, Any]]:
         """day 以前で最新の継続性チェック(1日分)を、重い状態(劣化 → 注意 → 織り込み進行 → 継続 → 終了)の順で返す。"""

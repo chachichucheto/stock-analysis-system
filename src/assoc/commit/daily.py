@@ -87,7 +87,7 @@ def commit_daily(doc: dict[str, Any], store: RecordStore, master: CompanyMaster,
         return ref if ref in known_scenarios else None
 
     counts = {k: 0 for k in ("premise_card", "grade", "scenario", "candidate", "check_plan",
-                             "evidence", "scenario_update", "theme_temperature")}
+                             "evidence", "scenario_update", "theme_temperature", "exit_call")}
 
     for card in doc.get("premise_cards", []):
         store.append("premise_card", {**common, **card})
@@ -173,6 +173,18 @@ def commit_daily(doc: dict[str, Any], store: RecordStore, master: CompanyMaster,
     for t in doc.get("theme_temperatures", []):
         store.append("theme_temperature", {**common, **t})
         counts["theme_temperature"] += 1
+
+    # 撤退・縮小の判断(D51)。銘柄コードはマスタと照合し、合わないコードは落とす(判断そのものは残す)
+    for call in doc.get("exit_calls", []):
+        good = []
+        for c in call.get("codes", []):
+            check = master.check(c["code"], c["company_name"])
+            if check.ok:
+                good.append({"code": c["code"], "company_name": check.master_name or c["company_name"]})
+            else:
+                result.warnings.append(f"撤退の判断 {call['target']}: 銘柄 {c['code']} {c['company_name']} を落とす({check.reason})")
+        store.append("exit_call", {**common, **{k: v for k, v in call.items() if k != "codes"}, "codes": good})
+        counts["exit_call"] += 1
 
     result.ok = True
     result.counts = counts

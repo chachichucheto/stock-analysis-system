@@ -275,6 +275,12 @@ def build_pack(app: "App", day: date) -> Path:
                "reasons": r.get("reasons", [])}
               for r in app.latest_health(day) if r["status"] in ("注意", "劣化") or r.get("changed")]
 
+    # 撤退・縮小の目印(D51)。シナリオの状態に関係なく、本命にした銘柄・保有銘柄・テーマの株価の絶対の動きで見る
+    try:
+        exit_watch = app.exit_watch(day)
+    except Exception as e:      # 目印が作れなくても、パック全体は止めない
+        exit_watch = {"error": f"撤退の目印を作れませんでした: {e}"}
+
     pack = {
         "pack_version": PACK_VERSION, "date": day.isoformat(), "generated_at": to_iso(now), "mode": "通常",
         "window": {"from": to_iso(window_start), "to": to_iso(window_end)},
@@ -292,6 +298,7 @@ def build_pack(app: "App", day: date) -> Path:
         "stock_ledger": stock_ledger,
         "themes": theme_rows,
         "theme_rotation": theme_rotation(tr, themes),
+        "exit_watch": exit_watch,
         "unexplained_movers": _unexplained(app, day),
         "macro_drivers": detect_macro_drivers(app.con, day, tr, names=themes),
         "recently_ended_scenarios": _recently_ended(app, day, scenarios, burst_by_theme, shocks),

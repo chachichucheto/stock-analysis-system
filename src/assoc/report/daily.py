@@ -25,6 +25,8 @@ class DayContext:
     sell_signals: list[tuple[str, str, list[str]]] = field(default_factory=list)  # (code, 社名, サイン)
     warnings: list[str] = field(default_factory=list)
     health: list[dict[str, Any]] = field(default_factory=list)         # 最新日の継続性チェック(重い順)
+    exit_calls: list[dict[str, Any]] = field(default_factory=list)     # その日の夜の判断が出した撤退・縮小(D51)
+    exit_watch: dict[str, Any] = field(default_factory=dict)           # 機械の目印(株価の絶対の動き。D51)
 
 
 def _pct(x: float | None, signed: bool = False) -> str:
@@ -84,13 +86,66 @@ def _card(e: CandidateEval, ctx: DayContext, n: int) -> list[str]:
     return lines
 
 
+_ACTION_MARK = {"撤退": "🔴 撤退", "縮小": "🟠 縮小", "警戒": "🟡 警戒", "継続": "🟢 継続"}
+_LEVEL_MARK = {"撤退検討": "🔴 撤退検討", "縮小検討": "🟠 縮小検討", "警戒": "🟡 警戒"}
+
+
+def _fmt_codes(codes: list[dict[str, Any]]) -> str:
+    return "、".join(f"{c.get('company_name') or c.get('name') or c['code']}({c['code']})" for c in codes)
+
+
+def render_exit_section(calls: list[dict[str, Any]], watch: dict[str, Any]) -> list[str]:
+    """撤退・縮小の提案(D51)。夜の判断(理由つき)を先に、機械の目印を後に。売買の指示ではなく判断材料。"""
+    lines = ["## 撤退・縮小の提案", "",
+             "> 売買の指示ではなく判断材料です。空売りの推奨は含みません。戻ってよい条件と、判断が外れる条件も書いています。", ""]
+    order = {"撤退": 0, "縮小": 1, "警戒": 2, "継続": 3}
+    for c in sorted(calls, key=lambda c: order.get(c["action"], 9)):
+        urg = f"({c['urgency']})" if c.get("urgency") else ""
+        lines += [f"### {_ACTION_MARK.get(c['action'], c['action'])}{urg}:{c['target']}", "",
+                  f"- **理由**:{c['reason']}", f"- **きっかけ**:{c['trigger']}"]
+        if c.get("codes"):
+            lines.append(f"- **対象の銘柄**:{_fmt_codes(c['codes'])}")
+        lines += [f"- **戻ってよい条件**:{c['reentry_conditions']}", f"- **この判断が外れる条件**:{c['wrong_if']}"]
+        for u in c.get("evidence_urls", [])[:3]:
+            lines.append(f"- 根拠:{u}")
+        lines.append("")
+    stocks = watch.get("stocks") or []
+    themes = watch.get("themes") or []
+    if watch.get("error"):
+        lines += [f"- ⚠ {watch['error']}", ""]
+    if stocks or themes:
+        lines += [f"### 機械の目印(株価の絶対の動き。シナリオが終わった銘柄も含む。追跡 {watch.get('tracked_codes', 0)} 銘柄)", ""]
+        if themes:
+            lines += ["| テーマ | 目印 | 5日 | 1か月 | 理由 | 追っている銘柄 |", "|---|---|---|---|---|---|"]
+            for t in themes:
+                aff = "、".join(f"{a['name']}({a['code']}・{'/'.join(a['sources'])})" for a in t["affected_holdings"]) or "―"
+                lines.append(f"| {t['name']} | {_LEVEL_MARK.get(t['level'], t['level'])} | {_pct(t.get('median_5d'), True)} | "
+                             f"{_pct(t.get('median_1m'), True)} | {' / '.join(t['reasons'])} | {aff} |")
+            lines.append("")
+        if stocks:
+            lines += ["| 銘柄 | 目印 | 本命にした日から | 高値から | 5日 | 理由 |", "|---|---|---|---|---|---|"]
+            for s in stocks:
+                m = s["metrics"]
+                lines.append(f"| {s['name']}({s['code']}・{'/'.join(s['sources'])}) | {_LEVEL_MARK.get(s['level'], s['level'])} | "
+                             f"{_pct(m.get('since_pick'), True)} | {_pct(m.get('from_peak'), True)} | "
+                             f"{_pct(m.get('ret_5d'), True)} | {' / '.join(s['reasons'])} |")
+            lines.append("")
+        if not calls and (stocks or themes):
+            lines += ["⚠ 夜の判断はこの目印を評価していません(理由つきの提案なし)。目印だけを参考にしてください。", ""]
+    if not calls and not stocks and not themes and not watch.get("error"):
+        lines += ["- 目印なし(追跡中の銘柄・テーマに、大きな下落はありません)", ""]
+    return lines
+
+
 def render_daily(eval_date: date, evals: list[CandidateEval], ctx: DayContext) -> str:
     picks = [e for e in evals if e.tier == "本命"]
     lines = [f"# 連想レポート {eval_date.isoformat()}", "",
              f"**今日の結論**:本命 {len(picks)} 銘柄 / 新しいシナリオ {len(ctx.new_scenarios)} 件 / "
-             f"強化 {sum(1 for u in ctx.updates if u['type'] == '強化')} 件 / 終了 {len(ctx.ended)} 件", ""]
+             f"強化 {sum(1 for u in ctx.updates if u['type'] == '強化')} 件 / 終了 {len(ctx.ended)} 件 / "
+             f"撤退・縮小 {sum(1 for c in ctx.exit_calls if c['action'] in ('撤退', '縮小'))} 件", ""]
     if ctx.warnings:
         lines += ["> **注意**", *[f"> - {w}" for w in ctx.warnings], ""]
+    lines += render_exit_section(ctx.exit_calls, ctx.exit_watch)
     if not picks:
         lines += ["**本命:該当なし**", ""]
 

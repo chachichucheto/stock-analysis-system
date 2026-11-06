@@ -83,6 +83,20 @@ class Thresholds:
     health_stall_frac: float = 0.4       # 期間のこの割合を過ぎ、織り込みが進まず材料も無ければ 停滞
     health_stall_priced_in: float = 0.2
     health_news_days: int = 5            # 新しい材料を数える日数
+    # 撤退・縮小の目印(tracking/exit_watch.py。D51)。暫定。株価の絶対の動きで見る(TOPIX との差ではない)
+    exit_track_days: int = 90            # 本命にした銘柄を追う日数(カレンダー。シナリオが終わっても追う)
+    exit_since_pick_cut: float = -0.08   # 本命にした日から → 縮小検討
+    exit_since_pick_out: float = -0.15   # → 撤退検討
+    exit_from_peak_cut: float = -0.12    # 本命にしたあとの高値から → 縮小検討
+    exit_from_peak_out: float = -0.20    # → 撤退検討
+    exit_ret_5d_warn: float = -0.08      # 直近5営業日 → 警戒
+    exit_ret_5d_cut: float = -0.12       # → 縮小検討
+    exit_market_stress_5d: float = -0.05  # TOPIX の5日がこれ以下なら、相場全体が崩れている日として基準を浅くする
+    exit_stress_factor: float = 0.8      # そのときの基準の倍率(0.8 = 基準の8割で目印を出す)
+    exit_theme_5d_warn: float = -0.06    # テーマ(代表銘柄の中央値)の5日 → 警戒
+    exit_theme_5d_cut: float = -0.10     # → 縮小検討
+    exit_theme_1m_cut: float = -0.15     # 1か月 → 縮小検討
+    exit_theme_1m_out: float = -0.25     # 1か月がこれ以下で、5日も縮小検討の水準なら → 撤退検討
 
 
 @dataclass
