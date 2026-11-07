@@ -104,6 +104,9 @@ def cmd_nextday(args) -> int:
 def cmd_morning(args) -> int:
     notices = _app(args).morning(_date(args.date))
     print("\n".join(notices) or "大きな反応なし")
+    if notices:        # 朝の警告は、画面を見ていなくても気づけるようにトーストで通知する(D53)
+        from assoc.alerts import _toast
+        _toast(f"連想 朝の点検 {len(notices)}件", " / ".join(notices[:2]))
     return 0
 
 

@@ -1,7 +1,8 @@
 """相場の姿勢と、底打ちの目印(D52)。
 
 悪いニュースは世の中にいつもたくさんある。毎日「危ない」と言えば、何も買えなくなる。
-そこで姿勢は、ニュースの数ではなく**相場そのものの傷み方**で決める(株価の事実だけ。LLM は理由を調べて、これを上げ下げする)。
+そこで機械の姿勢は、**相場そのものの傷み方(株価)**を土台にし、**悪いニュースの量が普段から急に増えたとき**(news_pressure.py。D53)だけ
+それより上げる。株価だけでは崩れたあとにしか分からない(手遅れ)ので、ニュース側の目印を足した。さらに質(中身)は夜の判断(LLM)が読み、上げ下げする。
 
   通常         :平時。悪材料は個別に見て、本命・保有に関係するものだけ対応する
   慎重         :下げが目立つ。新規は絞り、個別の悪材料に敏感になる
@@ -33,7 +34,11 @@ def _closes(df: pd.DataFrame, day: date) -> list[tuple[date, float]]:
     return rows
 
 
-def market_regime(topix: pd.DataFrame, tr: dict[str, Any], day: date, th: Thresholds) -> dict[str, Any]:
+_RANK = {通常: 0, 慎重: 1, 控える: 2}
+
+
+def market_regime(topix: pd.DataFrame, tr: dict[str, Any], day: date, th: Thresholds,
+                  news: dict[str, Any] | None = None) -> dict[str, Any]:
     rows = _closes(topix, day)
     if len(rows) < 6:
         return {"as_of": day.isoformat(), "level": 通常, "reasons": ["TOPIX の履歴が足りず、判定できません"],
@@ -67,6 +72,13 @@ def market_regime(topix: pd.DataFrame, tr: dict[str, Any], day: date, th: Thresh
     elif len(breadth) >= th.regime_warn_themes:
         reasons.append(f"テーマの {len(breadth)} 個が5日で {th.regime_theme_down:.0%} 以下(下げが広がっている)")
 
+    # ニュース側の目印(D53):株価が動く前に、悪いニュースの量が普段から急に増えていれば、姿勢を上げる(下げはしない)
+    price_level = level
+    if news and news.get("level") and _RANK.get(news["level"], 0) > _RANK[level]:
+        level = news["level"]
+    if news and news.get("reasons"):
+        reasons += [("ニュース:" + r) for r in news["reasons"]]
+
     # 底打ちの目印(株価が落ち着いたかだけ。再開してよい理由ではない)
     recent = rows[-th.regime_low_days:]
     low_date, low = min(recent, key=lambda x: x[1])
@@ -80,7 +92,7 @@ def market_regime(topix: pd.DataFrame, tr: dict[str, Any], day: date, th: Thresh
                       (min(last3) >= th.regime_calm_day_drop, f"直近3日の最大の1日下落 {min(last3):+.1%}")):
         notes.append(("✓ " if cond else "✗ ") + msg)
         ok = ok and cond
-    return {"as_of": day.isoformat(), "level": level, "reasons": reasons,
+    return {"as_of": day.isoformat(), "level": level, "price_level": price_level, "news": news or {}, "reasons": reasons,
             "metrics": {k: (None if v is None else round(v, 4)) for k, v in metrics.items()},
             "stabilization": {"stabilized": ok, "low_date": low_date.isoformat(), "days_since_low": since_low,
                               "rebound_from_low": round(rebound, 4), "notes": notes,

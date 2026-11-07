@@ -110,6 +110,16 @@ class Thresholds:
     regime_calm_days: int = 3             # 底打ちの目印:安値からこの営業日数以上たった
     regime_rebound: float = 0.03         # 安値からこの割合以上戻した
     regime_calm_day_drop: float = -0.02  # 直近3日の1日下落がこれより浅い
+    # 悪いニュースの量(market/news_pressure.py。D53)。暫定。悪化語を含む見出しの数を、直前の普段と比べる
+    news_pressure_base_days: int = 14
+    news_pressure_min_days: int = 5      # 比べる日がこれ未満なら、floor を普段の値にする
+    news_pressure_floor: float = 10.0    # 普段の件数の下限(少数のぶれで鳴らさないため)
+    news_pressure_warn_count: int = 30   # 慎重:この件数以上、かつ普段の warn_ratio 倍以上
+    news_pressure_warn_ratio: float = 2.0
+    news_pressure_out_count: int = 60    # 投資を控える:この件数以上、かつ普段の out_ratio 倍以上
+    news_pressure_out_ratio: float = 4.0
+    morning_us_index_drop: float = -0.03  # 朝の点検:米国の主要指数の前日比がこれ以下なら通知
+    morning_sox_drop: float = -0.05      # 朝の点検:フィラデルフィア半導体指数
 
 
 @dataclass

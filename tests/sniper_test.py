@@ -75,3 +75,9 @@ def test_broad_sanction_words_need_corroboration():
 def test_two_letter_alias_does_not_hit_longer_ascii_words():
     index = CompanyIndex.from_master(CompanyMaster({**NAMES, "2914": "日本たばこ産業"}), {**ALIASES, "JT": "2914"})
     assert detect_sniper([_ev(1, "JTBが旅行商品の情報漏えいを発表", media=3)], index, liquid=None) == []
+
+
+def test_headline_saying_assets_are_under_government_control_is_a_seizure():
+    # 実際の見出し(2026-11-06)。『接収』の語を使わず『管理下』と報じられた
+    t = "ＪＴ子会社の資産がロシア政府「管理下」に、日本政府は措置撤回を要求…経営権を事実上奪われ悪影響避けられず"
+    assert classify(t)[0] == "接収・国有化"

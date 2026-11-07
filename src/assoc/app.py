@@ -206,7 +206,14 @@ class App:
         loader = PriceLoader(price_source_from_config(self.cfg), day, YFinanceLivePriceSource())
         path = theme_returns.RETURNS_PATH
         tr = _json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
-        return market_regime(loader.get(self.topix_code()), tr, day, self.th)
+        from assoc.market.news_pressure import news_pressure
+        try:
+            # 週末・休日の実行では当日の見出しがまだ少ないので、前日も見て、比が大きいほうを使う
+            cands = [news_pressure(self.con, d, self.th) for d in (day, day - timedelta(days=1))]
+            news = max(cands, key=lambda p: p.ratio).as_dict()
+        except Exception as e:      # ニュースの集計が失敗しても、株価だけで姿勢を出す
+            news = {"error": str(e)}
+        return market_regime(loader.get(self.topix_code()), tr, day, self.th, news)
 
     def latest_health(self, day: date) -> list[dict[str, Any]]:
         """day 以前で最新の継続性チェック(1日分)を、重い状態(劣化 → 注意 → 織り込み進行 → 継続 → 終了)の順で返す。"""
@@ -445,10 +452,35 @@ class App:
                 sigma = r.iloc[:-1].tail(self.th.vol_window).std()
                 if sigma and abs(r.iloc[-1]) >= self.th.reacted_sigma * sigma:
                     notices.append(f"{g['event_id']}: 米国の1段目 {code} が {r.iloc[-1]:+.1%}(普段の {abs(r.iloc[-1]) / sigma:.1f} 倍)")
+        notices += self._overnight_notices(day, live)
         path = self.dir("reports") / f"morning_{day.isoformat()}.md"
         path.write_text("# 翌朝の確認\n\n" + ("\n".join(f"- {n}" for n in notices) or "- 大きな反応なし") + "\n",
                         encoding="utf-8")
         return notices
+
+    def _overnight_notices(self, day: date, live) -> list[str]:
+        """朝の点検(D53):東京の寄り付き前に、米国市場の夜間の下げと、悪いニュースの量を確認する。
+        2026-11-06 は、米国の大幅安(ナスダック -5.5%・半導体指数 -12.2%)が朝の時点で分かっていたのに、東京の引けまで何も出なかった。"""
+        out: list[str] = []
+        th = self.th
+        for sym, label, limit in (("^IXIC", "ナスダック", th.morning_us_index_drop), ("^GSPC", "S&P500", th.morning_us_index_drop),
+                                  ("^SOX", "フィラデルフィア半導体指数", th.morning_sox_drop)):
+            try:
+                df = live.daily(sym, day - timedelta(days=10), day)
+                r = df["close"].pct_change().dropna()
+                if len(r) and r.iloc[-1] <= limit:
+                    out.append(f"⚠ 米国市場の夜間の下げ:{label} {r.iloc[-1]:+.1%}(東京の寄り付き前。保有の見直しを)")
+            except Exception:
+                continue
+        try:
+            from assoc.market.news_pressure import news_pressure
+            p = news_pressure(self.con, day, th)
+            if p.level:
+                out.append(f"⚠ 悪いニュースが急増:{p.count} 件(普段の {p.ratio:.1f} 倍)→ 姿勢の目安 {p.level}。"
+                           + " / ".join(h["title"][:30] for h in p.headlines[:3]))
+        except Exception:
+            pass
+        return out
 
     # ---- 保守 --------------------------------------------------------------
     def verify(self) -> list[str]:

@@ -63,6 +63,18 @@ def burst_alerts(app: "App", day: date, names: dict[str, str]) -> list[Alert]:
     return out
 
 
+def news_pressure_alerts(app: "App", day: date) -> list[Alert]:
+    """悪いニュースの量が普段から急に増えたとき(market/news_pressure.py。D53)。株価が動くのを待たずに気づくための速報。"""
+    from assoc.market.news_pressure import news_pressure
+    p = news_pressure(app.con, day, app.th)
+    if not p.level:
+        return []
+    return [Alert(key=f"{day}:news_pressure", kind="news_pressure", theme_id="", level=float(p.count),
+                  title=f"【悪いニュースが急増】{p.count}件(普段 {p.baseline:.0f} 件の {p.ratio:.1f} 倍)→ 姿勢の目安:{p.level}",
+                  detail="悪化を示す語を含む見出しの数。株価が動く前の目印で、中身は夜の判断(または今すぐ prepare)で読む",
+                  samples=[h["title"] for h in p.headlines[:4]])]
+
+
 def term_alerts(app: "App", day: date, limit: int = 3) -> list[Alert]:
     """辞書のどのテーマにも当たらない、急に増えた語(events/terms.py)。上位だけ速報にする。"""
     from assoc.config import REPO_ROOT
@@ -120,7 +132,7 @@ def fresh(alerts: list[Alert], state: dict) -> list[Alert]:
     out = []
     for a in alerts:
         prev = state.get(a.key)
-        if prev is None or (a.kind == "burst" and a.level >= RESEND_RATIO * prev):
+        if prev is None or (a.kind in ("burst", "news_pressure") and a.level >= RESEND_RATIO * prev):
             out.append(a)
     return out
 
@@ -170,6 +182,10 @@ def run_alerts(app: "App", *, now: datetime | None = None, notify: bool = True, 
     day = now.astimezone(JST).date()
     names = _load_themes()
     found = burst_alerts(app, day, names)
+    try:
+        found += news_pressure_alerts(app, day)
+    except Exception as e:  # ニュースの量の集計が失敗しても、ほかの速報は出す
+        print(f"  悪いニュースの量の確認をスキップ: {type(e).__name__}: {e}")
     try:
         found += term_alerts(app, day)
     except Exception as e:  # 語の検知が失敗しても、ほかの速報は出す
